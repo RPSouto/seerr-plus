@@ -20,6 +20,8 @@ import ManageSlideOver from '@app/components/ManageSlideOver';
 import MediaSlider from '@app/components/MediaSlider';
 import PersonCard from '@app/components/PersonCard';
 import RequestButton from '@app/components/RequestButton';
+import RequestInterestUsers from '@app/components/SeerrPlus/RequestInterestUsers';
+import RemovalRequestButton from '@app/components/SeerrPlus/RemovalRequestButton';
 import Slider from '@app/components/Slider';
 import StatusBadge from '@app/components/StatusBadge';
 import useDeepLinks from '@app/hooks/useDeepLinks';
@@ -50,7 +52,11 @@ import {
 } from '@heroicons/react/24/solid';
 import { type RatingResponse } from '@server/api/ratings';
 import { IssueStatus } from '@server/constants/issue';
-import { MediaStatus, MediaType } from '@server/constants/media';
+import {
+  MediaRequestStatus,
+  MediaStatus,
+  MediaType,
+} from '@server/constants/media';
 import { MediaServerType } from '@server/constants/server';
 import type { MovieDetails as MovieDetailsType } from '@server/models/Movie';
 import axios from 'axios';
@@ -629,6 +635,19 @@ const MovieDetails = ({ movie }: MovieDetailsProps) => {
             tmdbId={data.id}
             onUpdate={() => revalidate()}
           />
+          <RemovalRequestButton
+            mediaId={data.mediaInfo?.id}
+            available={data.mediaInfo?.status === MediaStatus.AVAILABLE}
+            available4k={data.mediaInfo?.status4k === MediaStatus.AVAILABLE}
+            managed={
+              data.mediaInfo?.status !== MediaStatus.UNKNOWN &&
+              data.mediaInfo?.status !== MediaStatus.DELETED
+            }
+            managed4k={
+              data.mediaInfo?.status4k !== MediaStatus.UNKNOWN &&
+              data.mediaInfo?.status4k !== MediaStatus.DELETED
+            }
+          />
           {(data.mediaInfo?.status === MediaStatus.AVAILABLE ||
             (settings.currentSettings.movie4kEnabled &&
               hasPermission(
@@ -686,6 +705,14 @@ const MovieDetails = ({ movie }: MovieDetailsProps) => {
                 </Button>
               </Tooltip>
             )}
+          <RequestInterestUsers
+            requestId={data.mediaInfo?.requests.find(
+              (request) =>
+                !request.is4k &&
+                (request.status === MediaRequestStatus.PENDING ||
+                  request.status === MediaRequestStatus.APPROVED)
+            )?.id}
+          />
         </div>
       </div>
       <div className="media-overview">

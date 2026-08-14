@@ -7,6 +7,7 @@ import Media from '@server/entity/Media';
 import { User } from '@server/entity/User';
 import notificationManager, { Notification } from '@server/lib/notifications';
 import { Permission } from '@server/lib/permissions';
+import { getMediaInterestedUsers } from '@server/lib/seerrplus/requests';
 import logger from '@server/logger';
 import { sortBy } from 'lodash';
 import type { EntitySubscriberInterface, InsertEvent } from 'typeorm';
@@ -58,8 +59,7 @@ export class IssueCommentSubscriber implements EntitySubscriberInterface<IssueCo
       const [firstComment] = sortBy(issue.comments, 'id');
 
       if (entity.id !== firstComment.id) {
-        // Send notifications to all issue managers
-        notificationManager.sendNotification(Notification.ISSUE_COMMENT, {
+        const payload = {
           event: `New Comment on ${
             issue.issueType !== IssueType.OTHER
               ? `${IssueTypeName[issue.issueType]} `
@@ -71,6 +71,50 @@ export class IssueCommentSubscriber implements EntitySubscriberInterface<IssueCo
           issue,
           media,
           image,
+        };
+
+        if (issue.issueType === IssueType.REMOVAL) {
+          const interestedUsers = await getMediaInterestedUsers(
+            media.id,
+            issue.removalIs4k
+          );
+
+          notificationManager.sendNotification(Notification.ISSUE_COMMENT, {
+            ...payload,
+            notifyAdmin: true,
+            notifySystem: true,
+          });
+
+          interestedUsers
+            .filter(
+              (user) =>
+                !user.hasPermission(Permission.ADMIN) &&
+                user.id !== entity.user.id
+            )
+            .forEach((user) =>
+              notificationManager.sendNotification(
+                Notification.ISSUE_COMMENT,
+                {
+                  ...payload,
+                  notifyAdmin: false,
+                  notifySystem: false,
+                  notifyUser: user,
+                }
+              )
+            );
+
+          logger.info('Sent removal comment notification to eligible users', {
+            label: 'Seerr+',
+            issueId: issue.id,
+            mediaId: media.id,
+            recipientCount: interestedUsers.length,
+          });
+          return;
+        }
+
+        // Send notifications to all issue managers
+        notificationManager.sendNotification(Notification.ISSUE_COMMENT, {
+          ...payload,
           notifyAdmin: true,
           notifySystem: true,
           notifyUser:

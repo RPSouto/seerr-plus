@@ -1,10 +1,12 @@
 import Badge from '@app/components/Common/Badge';
 import Button from '@app/components/Common/Button';
 import CachedImage from '@app/components/Common/CachedImage';
+import ConfirmButton from '@app/components/Common/ConfirmButton';
 import Tooltip from '@app/components/Common/Tooltip';
 import RequestModal from '@app/components/RequestModal';
+import RequestParticipants from '@app/components/SeerrPlus/RequestParticipants';
 import useRequestOverride from '@app/hooks/useRequestOverride';
-import { useUser } from '@app/hooks/useUser';
+import { Permission, useUser } from '@app/hooks/useUser';
 import globalMessages from '@app/i18n/globalMessages';
 import defineMessages from '@app/utils/defineMessages';
 import {
@@ -32,12 +34,13 @@ const messages = defineMessages('components.RequestBlock', {
   rootfolder: 'Root Folder',
   languageprofile: 'Language Profile',
   requestdate: 'Request Date',
-  requestedby: 'Requested By',
+  requestedby: 'Originally Requested By',
   lastmodifiedby: 'Last Modified By',
   approve: 'Approve Request',
   decline: 'Decline Request',
   edit: 'Edit Request',
   delete: 'Delete Request',
+  confirmdelete: 'Confirm',
 });
 
 interface RequestBlockProps {
@@ -46,10 +49,11 @@ interface RequestBlockProps {
 }
 
 const RequestBlock = ({ request, onUpdate }: RequestBlockProps) => {
-  const { user } = useUser();
+  const { user, hasPermission } = useUser();
   const intl = useIntl();
   const [isUpdating, setIsUpdating] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [participantCount, setParticipantCount] = useState<number>();
   const { profile, rootFolder, server, languageProfile } =
     useRequestOverride(request);
 
@@ -122,6 +126,10 @@ const RequestBlock = ({ request, onUpdate }: RequestBlockProps) => {
                 </Link>
               </span>
             </div>
+            <RequestParticipants
+              requestId={request.id}
+              onParticipantCountChange={setParticipantCount}
+            />
             {request.modifiedBy && (
               <div className="flex flex-nowrap">
                 <span className="flex w-40 items-center truncate md:w-auto">
@@ -188,17 +196,23 @@ const RequestBlock = ({ request, onUpdate }: RequestBlockProps) => {
                 </Tooltip>
               </>
             )}
-            {request.status !== MediaRequestStatus.PENDING && (
-              <Tooltip content={intl.formatMessage(messages.delete)}>
-                <Button
-                  buttonType="danger"
-                  onClick={() => deleteRequest()}
-                  disabled={isUpdating}
-                >
-                  <TrashIcon className="icon-sm" />
-                </Button>
-              </Tooltip>
-            )}
+            {participantCount === 0 &&
+              (hasPermission(Permission.MANAGE_REQUESTS) ||
+                (request.status === MediaRequestStatus.PENDING &&
+                  request.requestedBy.id === user?.id)) && (
+                <Tooltip content={intl.formatMessage(messages.delete)}>
+                  <ConfirmButton
+                    onClick={() => {
+                      if (!isUpdating) {
+                        deleteRequest();
+                      }
+                    }}
+                    confirmText={intl.formatMessage(messages.confirmdelete)}
+                  >
+                    <TrashIcon className="icon-sm" />
+                  </ConfirmButton>
+                </Tooltip>
+              )}
           </div>
         </div>
         <div className="mt-2 sm:flex sm:justify-between">

@@ -11,6 +11,7 @@ import OverrideRule from '@server/entity/OverrideRule';
 import type { MediaRequestBody } from '@server/interfaces/api/requestInterfaces';
 import notificationManager, { Notification } from '@server/lib/notifications';
 import { Permission } from '@server/lib/permissions';
+import { addRequestParticipant } from '@server/lib/seerrplus/requests';
 import { getSettings } from '@server/lib/settings';
 import logger from '@server/logger';
 import { DbAwareColumn, resolveDbType } from '@server/utils/DbColumnHelper';
@@ -29,6 +30,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import Media from './Media';
+import MediaRequestParticipant from './MediaRequestParticipant';
 import SeasonRequest from './SeasonRequest';
 import { User } from './User';
 
@@ -121,22 +123,10 @@ export class MediaRequest {
         ? quotas.movie.limit
         : quotas.tv.limit) ?? 0) > 0;
 
-    if (!ignoreQuota) {
-      if (requestBody.ignoreQuota && !canBypassQuota) {
-        throw new RequestPermissionError(
-          'You do not have permission to bypass user quota limits.'
-        );
-      } else if (
-        requestBody.mediaType === MediaType.MOVIE &&
-        quotas.movie.restricted
-      ) {
-        throw new QuotaRestrictedError('Movie Quota exceeded.');
-      } else if (
-        requestBody.mediaType === MediaType.TV &&
-        quotas.tv.restricted
-      ) {
-        throw new QuotaRestrictedError('Series Quota exceeded.');
-      }
+    if (!ignoreQuota && requestBody.ignoreQuota && !canBypassQuota) {
+      throw new RequestPermissionError(
+        'You do not have permission to bypass user quota limits.'
+      );
     }
 
     const tmdbMedia =
@@ -192,6 +182,7 @@ export class MediaRequest {
       .createQueryBuilder('request')
       .leftJoinAndSelect('request.media', 'media')
       .leftJoinAndSelect('request.requestedBy', 'user')
+      .leftJoinAndSelect('request.seasons', 'seasons')
       .where('request.is4k = :is4k', { is4k: requestBody.is4k })
       .andWhere('media.tmdbId = :tmdbId', { tmdbId: tmdbMedia.id })
       .andWhere('media.mediaType = :mediaType', {
@@ -206,6 +197,11 @@ export class MediaRequest {
         existing[0].status !== MediaRequestStatus.DECLINED &&
         existing[0].status !== MediaRequestStatus.COMPLETED
       ) {
+        if (!options.isAutoRequest) {
+          await addRequestParticipant(existing[0], requestUser);
+          return existing[0];
+        }
+
         logger.warn('Duplicate request for media blocked', {
           tmdbId: tmdbMedia.id,
           mediaType: requestBody.mediaType,
@@ -233,6 +229,16 @@ export class MediaRequest {
           'Auto-request for this media and user already exists.'
         );
       }
+    }
+
+    // Joining an existing request is an interest, not a new acquisition, so
+    // quota checks intentionally happen after the movie deduplication path.
+    if (
+      !ignoreQuota &&
+      requestBody.mediaType === MediaType.MOVIE &&
+      quotas.movie.restricted
+    ) {
+      throw new QuotaRestrictedError('Movie Quota exceeded.');
     }
 
     // Apply overrides if the user is not an admin or has the "advanced request" permission
@@ -409,6 +415,7 @@ export class MediaRequest {
       });
 
       await requestRepository.save(request);
+      await addRequestParticipant(request, requestUser);
       return request;
     } else {
       const tmdbMediaShow = tmdbMedia as Awaited<
@@ -466,12 +473,42 @@ export class MediaRequest {
         (rs) => !existingSeasons.includes(rs)
       );
 
+      if (!options.isAutoRequest) {
+        const overlappingRequests = existing.filter(
+          (request) =>
+            request.status !== MediaRequestStatus.DECLINED &&
+            request.status !== MediaRequestStatus.COMPLETED &&
+            request.seasons.some((season) =>
+              requestedSeasons.includes(season.seasonNumber)
+            )
+        );
+        await Promise.all(
+          overlappingRequests.map((request) =>
+            addRequestParticipant(request, requestUser)
+          )
+        );
+      }
+
       if (finalSeasons.length === 0) {
+        const activeRequests = existing.filter(
+          (request) =>
+            request.status !== MediaRequestStatus.DECLINED &&
+            request.status !== MediaRequestStatus.COMPLETED
+        );
+        if (!options.isAutoRequest && activeRequests.length > 0) {
+          await Promise.all(
+            activeRequests.map((request) =>
+              addRequestParticipant(request, requestUser)
+            )
+          );
+          return activeRequests[0];
+        }
         throw new NoSeasonsAvailableError('No seasons available to request');
       } else if (
         !ignoreQuota &&
-        quotas.tv.limit &&
-        finalSeasons.length > (quotas.tv.remaining ?? 0)
+        (quotas.tv.restricted ||
+          (quotas.tv.limit &&
+            finalSeasons.length > (quotas.tv.remaining ?? 0)))
       ) {
         throw new QuotaRestrictedError('Series Quota exceeded.');
       }
@@ -542,6 +579,7 @@ export class MediaRequest {
       });
 
       await requestRepository.save(request);
+      await addRequestParticipant(request, requestUser);
       return request;
     }
   }
@@ -566,6 +604,13 @@ export class MediaRequest {
   })
   @Index()
   public requestedBy: User;
+
+  @OneToMany(
+    () => MediaRequestParticipant,
+    (participant) => participant.request,
+    { cascade: true }
+  )
+  public participants: MediaRequestParticipant[];
 
   @ManyToOne(() => User, {
     nullable: true,

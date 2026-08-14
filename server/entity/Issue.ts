@@ -33,6 +33,15 @@ class Issue {
   @Column({ type: 'int', default: 0 })
   public problemEpisode: number;
 
+  @Column({ type: 'varchar', nullable: true })
+  public removalReason?: string | null;
+
+  @Column({ type: 'boolean', default: false })
+  public removalIs4k: boolean;
+
+  @Column({ type: 'int', nullable: true })
+  public removalDecision?: number | null;
+
   @ManyToOne(() => Media, (media) => media.issues, {
     eager: true,
     onDelete: 'CASCADE',

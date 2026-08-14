@@ -20,9 +20,14 @@ import {
   CheckCircleIcon,
   PlayIcon,
   ServerIcon,
+  XCircleIcon,
 } from '@heroicons/react/24/outline';
 import { ArrowPathIcon } from '@heroicons/react/24/solid';
-import { IssueStatus } from '@server/constants/issue';
+import {
+  IssueStatus,
+  IssueType,
+  RemovalRequestDecision,
+} from '@server/constants/issue';
 import { MediaType } from '@server/constants/media';
 import { MediaServerType } from '@server/constants/server';
 import type Issue from '@server/entity/Issue';
@@ -71,6 +76,12 @@ const messages = defineMessages('components.IssueDetails', {
   nocomments: 'No comments.',
   unknownissuetype: 'Unknown',
   commentplaceholder: 'Add a comment…',
+  approveRemoval: 'Approve and Remove',
+  rejectRemoval: 'Reject Removal',
+  removalApproved: 'Removal approved and completed.',
+  removalRejected: 'Removal request rejected.',
+  removalDecisionFailed: 'Unable to process the removal request.',
+  removalRequest: 'Removal Request',
 });
 
 const isMovie = (movie: MovieDetails | TvDetails): movie is MovieDetails => {
@@ -151,6 +162,29 @@ const IssueDetails = () => {
       mutate('/api/v1/issue/count');
     } catch {
       addToast(intl.formatMessage(messages.toaststatusupdatefailed), {
+        appearance: 'error',
+        autoDismiss: true,
+      });
+    }
+  };
+
+  const decideRemoval = async (decision: 'approve' | 'reject') => {
+    try {
+      await axios.post(
+        `/api/v1/seerrplus/removal-requests/${issueData.id}/${decision}`
+      );
+      addToast(
+        intl.formatMessage(
+          decision === 'approve'
+            ? messages.removalApproved
+            : messages.removalRejected
+        ),
+        { appearance: 'success', autoDismiss: true }
+      );
+      revalidateIssue();
+      mutate('/api/v1/issue');
+    } catch {
+      addToast(intl.formatMessage(messages.removalDecisionFailed), {
         appearance: 'error',
         autoDismiss: true,
       });
@@ -473,6 +507,48 @@ const IssueDetails = () => {
             <div className="font-semibold text-gray-100 lg:text-xl">
               {intl.formatMessage(messages.comments)}
             </div>
+            {issueData.issueType === IssueType.REMOVAL && (
+              <div className="my-4 rounded-lg border border-yellow-500/40 bg-yellow-500/10 p-4">
+                <div className="font-semibold text-yellow-100">
+                  {intl.formatMessage(messages.removalRequest)}{' '}
+                  {issueData.removalIs4k ? '(4K)' : ''}
+                </div>
+                {issueData.removalDecision && (
+                  <div className="mt-2 text-sm text-gray-200">
+                    {issueData.removalDecision ===
+                    RemovalRequestDecision.APPROVED
+                      ? intl.formatMessage(messages.removalApproved)
+                      : intl.formatMessage(messages.removalRejected)}
+                  </div>
+                )}
+                {issueData.status === IssueStatus.OPEN &&
+                  hasPermission(
+                    [Permission.MANAGE_REQUESTS, Permission.MANAGE_ISSUES],
+                    { type: 'or' }
+                  ) && (
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <Button
+                        buttonType="danger"
+                        onClick={() => decideRemoval('approve')}
+                      >
+                        <CheckCircleIcon />
+                        <span>
+                          {intl.formatMessage(messages.approveRemoval)}
+                        </span>
+                      </Button>
+                      <Button
+                        buttonType="default"
+                        onClick={() => decideRemoval('reject')}
+                      >
+                        <XCircleIcon />
+                        <span>
+                          {intl.formatMessage(messages.rejectRemoval)}
+                        </span>
+                      </Button>
+                    </div>
+                  )}
+              </div>
+            )}
             {otherComments.map((comment) => (
               <IssueComment
                 comment={comment}
@@ -518,7 +594,8 @@ const IssueDetails = () => {
                           {(hasPermission(Permission.MANAGE_ISSUES) ||
                             belongsToUser) && (
                             <>
-                              {issueData.status === IssueStatus.OPEN ? (
+                              {issueData.issueType !== IssueType.REMOVAL &&
+                              issueData.status === IssueStatus.OPEN ? (
                                 <Button
                                   type="button"
                                   buttonType="danger"
@@ -539,7 +616,7 @@ const IssueDetails = () => {
                                     )}
                                   </span>
                                 </Button>
-                              ) : (
+                              ) : issueData.issueType !== IssueType.REMOVAL ? (
                                 <Button
                                   type="button"
                                   buttonType="default"
@@ -560,7 +637,7 @@ const IssueDetails = () => {
                                     )}
                                   </span>
                                 </Button>
-                              )}
+                              ) : null}
                             </>
                           )}
                           <Button

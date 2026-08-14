@@ -15,9 +15,11 @@ import {
 import { getRepository } from '@server/datasource';
 import Media from '@server/entity/Media';
 import { MediaRequest } from '@server/entity/MediaRequest';
+import MediaRequestParticipant from '@server/entity/MediaRequestParticipant';
 import Season from '@server/entity/Season';
 import SeasonRequest from '@server/entity/SeasonRequest';
 import notificationManager, { Notification } from '@server/lib/notifications';
+import type { NotificationPayload } from '@server/lib/notifications/agents/agent';
 import { getSettings } from '@server/lib/settings';
 import logger from '@server/logger';
 import { isEqual, truncate } from 'lodash';
@@ -42,6 +44,59 @@ const sanitizeDisplayName = (displayName: string): string => {
 
 @EventSubscriber()
 export class MediaRequestSubscriber implements EntitySubscriberInterface<MediaRequest> {
+  private async notifyInterestedUsers(
+    entity: MediaRequest,
+    payload: Omit<
+      NotificationPayload,
+      'notifyAdmin' | 'notifySystem' | 'notifyUser'
+    >,
+    event?: UpdateEvent<MediaRequest>
+  ): Promise<void> {
+    const participantRepository = event?.manager
+      ? event.manager.getRepository(MediaRequestParticipant)
+      : getRepository(MediaRequestParticipant);
+    const participants = await participantRepository
+      .createQueryBuilder('participant')
+      .innerJoinAndSelect('participant.user', 'user')
+      .leftJoinAndSelect('user.settings', 'settings')
+      .where('participant.requestId = :requestId', { requestId: entity.id })
+      .getMany();
+
+    const interestedUsers = Array.from(
+      new Map(
+        participants
+          .filter((participant) => participant.user)
+          .map(
+            (participant) =>
+              [participant.user.id, participant.user] as const
+          )
+      ).values()
+    );
+
+    if (interestedUsers.length === 0) {
+      notificationManager.sendNotification(Notification.MEDIA_AVAILABLE, {
+        ...payload,
+        notifyAdmin: false,
+        notifySystem: true,
+      });
+    } else {
+      interestedUsers.forEach((user, index) => {
+        notificationManager.sendNotification(Notification.MEDIA_AVAILABLE, {
+          ...payload,
+          notifyAdmin: false,
+          notifySystem: index === 0,
+          notifyUser: user,
+        });
+      });
+    }
+
+    logger.info('Sent availability notification to interested users', {
+      label: 'Seerr+',
+      requestId: entity.id,
+      recipientCount: interestedUsers.length,
+    });
+  }
+
   private async notifyAvailableMovie(
     entity: MediaRequest,
     event?: UpdateEvent<MediaRequest>
@@ -75,23 +130,24 @@ export class MediaRequestSubscriber implements EntitySubscriberInterface<MediaRe
         movieId: entity.media.tmdbId,
       });
 
-      notificationManager.sendNotification(Notification.MEDIA_AVAILABLE, {
-        event: `${entity.is4k ? '4K ' : ''}Movie Request Now Available`,
-        notifyAdmin: false,
-        notifySystem: true,
-        notifyUser: entity.requestedBy,
-        subject: `${movie.title}${
-          movie.release_date ? ` (${movie.release_date.slice(0, 4)})` : ''
-        }`,
-        message: truncate(movie.overview, {
-          length: 500,
-          separator: /\s/,
-          omission: '…',
-        }),
-        media: latestMedia,
-        image: `https://image.tmdb.org/t/p/w600_and_h900_bestv2${movie.poster_path}`,
-        request: entity,
-      });
+      await this.notifyInterestedUsers(
+        entity,
+        {
+          event: `${entity.is4k ? '4K ' : ''}Movie Request Now Available`,
+          subject: `${movie.title}${
+            movie.release_date ? ` (${movie.release_date.slice(0, 4)})` : ''
+          }`,
+          message: truncate(movie.overview, {
+            length: 500,
+            separator: /\s/,
+            omission: '…',
+          }),
+          media: latestMedia,
+          image: `https://image.tmdb.org/t/p/w600_and_h900_bestv2${movie.poster_path}`,
+          request: entity,
+        },
+        event
+      );
     } catch (e) {
       logger.error('Something went wrong sending media notification(s)', {
         label: 'Notifications',
@@ -146,37 +202,49 @@ export class MediaRequestSubscriber implements EntitySubscriberInterface<MediaRe
     try {
       const tv = await tmdb.getTvShow({ tvId: entity.media.tmdbId });
 
-      notificationManager.sendNotification(Notification.MEDIA_AVAILABLE, {
-        event: `${entity.is4k ? '4K ' : ''}Series Request Now Available`,
-        subject: `${tv.name}${
-          tv.first_air_date ? ` (${tv.first_air_date.slice(0, 4)})` : ''
-        }`,
-        message: truncate(tv.overview, {
-          length: 500,
-          separator: /\s/,
-          omission: '…',
-        }),
-        notifyAdmin: false,
-        notifySystem: true,
-        notifyUser: entity.requestedBy,
-        image: `https://image.tmdb.org/t/p/w600_and_h900_bestv2${tv.poster_path}`,
-        media: latestMedia,
-        extra: [
-          {
-            name: 'Requested Seasons',
-            value: entity.seasons
-              .map((season) => season.seasonNumber)
-              .join(', '),
-          },
-        ],
-        request: entity,
-      });
+      await this.notifyInterestedUsers(
+        entity,
+        {
+          event: `${entity.is4k ? '4K ' : ''}Series Request Now Available`,
+          subject: `${tv.name}${
+            tv.first_air_date ? ` (${tv.first_air_date.slice(0, 4)})` : ''
+          }`,
+          message: truncate(tv.overview, {
+            length: 500,
+            separator: /\s/,
+            omission: '…',
+          }),
+          image: `https://image.tmdb.org/t/p/w600_and_h900_bestv2${tv.poster_path}`,
+          media: latestMedia,
+          extra: [
+            {
+              name: 'Requested Seasons',
+              value: entity.seasons
+                .map((season) => season.seasonNumber)
+                .join(', '),
+            },
+          ],
+          request: entity,
+        },
+        event
+      );
     } catch (e) {
       logger.error('Something went wrong sending media notification(s)', {
         label: 'Notifications',
         errorMessage: e.message,
         mediaId: entity.id,
       });
+    }
+  }
+
+  public async notifyAvailable(
+    entity: MediaRequest,
+    event?: UpdateEvent<MediaRequest>
+  ): Promise<void> {
+    if (entity.media.mediaType === MediaType.MOVIE) {
+      await this.notifyAvailableMovie(entity, event);
+    } else if (entity.media.mediaType === MediaType.TV) {
+      await this.notifyAvailableSeries(entity, event);
     }
   }
 
@@ -1023,12 +1091,7 @@ export class MediaRequestSubscriber implements EntitySubscriberInterface<MediaRe
       await this.updateParentStatus(event.entity as MediaRequest);
 
       if (event.entity.status === MediaRequestStatus.COMPLETED) {
-        if (event.entity.media.mediaType === MediaType.MOVIE) {
-          await this.notifyAvailableMovie(event.entity as MediaRequest, event);
-        }
-        if (event.entity.media.mediaType === MediaType.TV) {
-          await this.notifyAvailableSeries(event.entity as MediaRequest, event);
-        }
+        await this.notifyAvailable(event.entity as MediaRequest, event);
       }
     } catch (e) {
       logger.error(

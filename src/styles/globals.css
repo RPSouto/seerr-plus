@@ -39,7 +39,7 @@
   }
 
   body {
-    @apply bg-gray-900;
+    @apply bg-black;
     -webkit-overflow-scrolling: touch;
   }
 
@@ -52,6 +52,48 @@
   }
 }
 
+/* Seerr+ Black theme. This is deliberately scoped to the authenticated
+ * application so email templates and external embeds keep their own styles. */
+.seerr-plus-theme {
+  min-height: 100%;
+  background: #000 !important;
+  color-scheme: dark;
+}
+
+.seerr-plus-theme [class*='bg-gray-900'] {
+  background-color: #000 !important;
+}
+
+.seerr-plus-theme [class*='from-gray-900'],
+.seerr-plus-theme [class*='from-indigo-'] {
+  --tw-gradient-from: #171717 var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: rgb(23 23 23 / 0) var(--tw-gradient-to-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+
+.seerr-plus-theme [class*='to-gray-900'],
+.seerr-plus-theme [class*='to-purple-'],
+.seerr-plus-theme [class*='to-indigo-'] {
+  --tw-gradient-to: #000 var(--tw-gradient-to-position) !important;
+}
+
+.seerr-plus-theme [class*='bg-indigo-'] {
+  background-color: #171717 !important;
+}
+
+.seerr-plus-theme [class*='border-indigo-'] {
+  border-color: #525252 !important;
+}
+
+.seerr-plus-theme [class*='text-indigo-'] {
+  color: #f5f5f5 !important;
+}
+
+.seerr-plus-theme [class*='ring-indigo-'],
+.seerr-plus-theme [class*='focus:ring-indigo'] {
+  --tw-ring-color: rgb(115 115 115 / 0.7) !important;
+}
+
 @layer components {
   .searchbar {
     padding-top: env(safe-area-inset-top);
@@ -59,10 +101,14 @@
   }
 
   .sidebar {
-    @apply border-r border-gray-700;
+    @apply border-r border-gray-800;
     padding-top: env(safe-area-inset-top);
     padding-left: env(safe-area-inset-left);
-    background: linear-gradient(180deg, rgba(31, 41, 55, 1) 0%, #131928 100%);
+    background: linear-gradient(180deg, #090909 0%, #000000 100%);
+  }
+
+  .seerr-plus-brand {
+    @apply inline-flex items-center rounded border border-gray-500 bg-black px-2 py-0.5 text-xs font-bold uppercase tracking-widest text-white;
   }
 
   .slideover {
@@ -133,11 +179,11 @@
   }
 
   .media-header {
-    @apply flex flex-col items-center pt-4 xl:flex-row xl:items-end;
+    @apply flex flex-col items-center pt-4 xl:flex-row xl:flex-wrap xl:items-end xl:pb-3;
   }
 
   .media-poster {
-    @apply w-32 overflow-hidden rounded shadow md:w-44 md:rounded-lg md:shadow-2xl xl:mr-4 xl:w-52;
+    @apply w-32 flex-shrink-0 overflow-hidden rounded shadow md:w-44 md:rounded-lg md:shadow-2xl xl:mr-4 xl:w-52;
   }
 
   .media-status {
@@ -145,15 +191,18 @@
   }
 
   .media-title {
-    @apply mt-4 flex flex-1 flex-col text-center text-white xl:mr-4 xl:mt-0 xl:text-left;
+    @apply mt-4 flex min-w-0 flex-1 flex-col text-center text-white xl:mr-4 xl:mt-0 xl:min-w-80 xl:text-left;
   }
 
   .media-title > h1 {
-    @apply text-2xl font-bold xl:text-4xl;
+    @apply max-w-full text-2xl font-bold xl:text-4xl;
+    overflow-wrap: normal;
+    word-break: normal;
+    text-wrap: balance;
   }
 
   h1 .media-year {
-    @apply text-2xl;
+    @apply whitespace-nowrap text-2xl;
   }
 
   .media-attributes {
@@ -165,11 +214,11 @@
   }
 
   .media-actions {
-    @apply relative mt-4 flex flex-shrink-0 flex-wrap items-center justify-center sm:flex-nowrap sm:justify-end xl:mt-0;
+    @apply relative mt-4 flex w-full min-w-0 flex-wrap items-center justify-center gap-y-3 sm:justify-end xl:ml-auto xl:w-[calc(100%-14rem)] xl:justify-start;
   }
 
   .media-actions > * {
-    @apply mb-3 sm:mb-0;
+    @apply mb-0 max-w-full;
   }
 
   .media-overview {

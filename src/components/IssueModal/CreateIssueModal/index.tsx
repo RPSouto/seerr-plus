@@ -1,6 +1,7 @@
 import Button from '@app/components/Common/Button';
 import Modal from '@app/components/Common/Modal';
 import { issueOptions } from '@app/components/IssueModal/constants';
+import { IssueType } from '@server/constants/issue';
 import useSettings from '@app/hooks/useSettings';
 import useToasts from '@app/hooks/useToasts';
 import { Permission, useUser } from '@app/hooks/useUser';
@@ -58,6 +59,9 @@ const CreateIssueModal = ({
   mediaType,
   tmdbId,
 }: CreateIssueModalProps) => {
+  const reportIssueOptions = issueOptions.filter(
+    ({ issueType }) => issueType !== IssueType.REMOVAL
+  );
   const intl = useIntl();
   const settings = useSettings();
   const { hasPermission } = useUser();
@@ -93,7 +97,7 @@ const CreateIssueModal = ({
   return (
     <Formik
       initialValues={{
-        selectedIssue: issueOptions[0],
+        selectedIssue: reportIssueOptions[0],
         message: '',
         problemSeason: availableSeasons.length === 1 ? availableSeasons[0] : 0,
         problemEpisode: 0,
@@ -245,14 +249,14 @@ const CreateIssueModal = ({
                 Select an Issue
               </RadioGroup.Label>
               <div className="-space-y-px overflow-hidden rounded-md bg-gray-800/30">
-                {issueOptions.map((setting, index) => (
+                {reportIssueOptions.map((setting, index) => (
                   <RadioGroup.Option
                     key={`issue-type-${setting.issueType}`}
                     value={setting}
                     className={({ checked }) =>
                       classNames(
                         index === 0 ? 'rounded-tl-md rounded-tr-md' : '',
-                        index === issueOptions.length - 1
+                        index === reportIssueOptions.length - 1
                           ? 'rounded-bl-md rounded-br-md'
                           : '',
                         checked

@@ -2,9 +2,14 @@ import RadarrAPI from '@server/api/servarr/radarr';
 import SonarrAPI from '@server/api/servarr/sonarr';
 import TautulliAPI from '@server/api/tautulli';
 import TheMovieDb from '@server/api/themoviedb';
-import { MediaStatus, MediaType } from '@server/constants/media';
+import {
+  MediaRequestStatus,
+  MediaStatus,
+  MediaType,
+} from '@server/constants/media';
 import { getRepository } from '@server/datasource';
 import Media from '@server/entity/Media';
+import { MediaRequest } from '@server/entity/MediaRequest';
 import Season from '@server/entity/Season';
 import { User } from '@server/entity/User';
 import type {
@@ -15,6 +20,7 @@ import { Permission } from '@server/lib/permissions';
 import { getSettings } from '@server/lib/settings';
 import logger from '@server/logger';
 import { isAuthenticated } from '@server/middleware/auth';
+import { MediaRequestSubscriber } from '@server/subscriber/MediaRequestSubscriber';
 import { Router } from 'express';
 import type { FindOneOptions } from 'typeorm';
 import { EntityNotFoundError, In, IsNull, Not } from 'typeorm';
@@ -117,6 +123,8 @@ mediaRoutes.post<
     }
 
     const is4k = String(req.body.is4k) === 'true';
+    const wasAlreadyAvailable =
+      media[is4k ? 'status4k' : 'status'] === MediaStatus.AVAILABLE;
 
     switch (req.params.status) {
       case 'available':
@@ -162,6 +170,24 @@ mediaRoutes.post<
     }
 
     await mediaRepository.save(media);
+
+    // Re-applying "Available" is an explicit resend action. This lets an
+    // administrator notify participants for older requests that completed
+    // before Seerr+ participant notifications were installed.
+    if (req.params.status === 'available' && wasAlreadyAvailable) {
+      const completedRequests = await getRepository(MediaRequest).find({
+        where: {
+          media: { id: media.id },
+          status: MediaRequestStatus.COMPLETED,
+          is4k,
+        },
+        relations: { media: true, seasons: true },
+      });
+      const notifier = new MediaRequestSubscriber();
+      for (const request of completedRequests) {
+        await notifier.notifyAvailable(request);
+      }
+    }
 
     return res.status(200).json(media);
   }

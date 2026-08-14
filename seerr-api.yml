@@ -2045,6 +2045,16 @@ components:
         issueType:
           type: number
           example: 1
+        removalReason:
+          type: string
+          nullable: true
+          enum: [free_space, no_interest, other]
+        removalIs4k:
+          type: boolean
+        removalDecision:
+          type: number
+          nullable: true
+          description: 1 approved, 2 rejected
         media:
           $ref: '#/components/schemas/MediaInfo'
         createdBy:
@@ -6653,7 +6663,7 @@ paths:
                 $ref: '#/components/schemas/MediaRequest'
     delete:
       summary: Delete request
-      description: Removes a request. If the user has the `MANAGE_REQUESTS` permission, any request can be removed. Otherwise, only pending requests can be removed.
+      description: Removes a request only when it has no interested users. If the user has the `MANAGE_REQUESTS` permission, any empty request can be removed. Otherwise, only pending empty requests owned by the user can be removed.
       tags:
         - request
       parameters:
@@ -6667,6 +6677,8 @@ paths:
       responses:
         '204':
           description: Succesfully removed request
+        '409':
+          description: Request still has interested users
   /request/{requestId}/retry:
     post:
       summary: Retry failed request
@@ -8151,6 +8163,169 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OverrideRule'
+  /seerrplus/requests/{requestId}:
+    get:
+      summary: Get Seerr+ request interest details
+      tags:
+        - seerrplus
+      parameters:
+        - in: path
+          name: requestId
+          required: true
+          schema:
+            type: number
+      responses:
+        '200':
+          description: Request owner and interested users
+        '404':
+          description: Request not found
+  /seerrplus/requests/{requestId}/users:
+    get:
+      summary: Get users interested in a request
+      tags:
+        - seerrplus
+      parameters:
+        - in: path
+          name: requestId
+          required: true
+          schema:
+            type: number
+      responses:
+        '200':
+          description: Request owner and interested users
+        '404':
+          description: Request not found
+    post:
+      summary: Add an interested user without creating another acquisition
+      tags:
+        - seerrplus
+      parameters:
+        - in: path
+          name: requestId
+          required: true
+          schema:
+            type: number
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userId:
+                  type: number
+              additionalProperties: false
+      responses:
+        '201':
+          description: Interest recorded
+        '403':
+          description: Insufficient permission to act for another user
+        '404':
+          description: Request or user not found
+        '409':
+          description: Request is no longer active
+  /seerrplus/requests/{requestId}/users/{userId}:
+    delete:
+      summary: Remove a user's interest from a request
+      tags:
+        - seerrplus
+      parameters:
+        - in: path
+          name: requestId
+          required: true
+          schema:
+            type: number
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: number
+      responses:
+        '200':
+          description: Interest removed and remaining participant count returned
+        '403':
+          description: Insufficient permission
+        '404':
+          description: Request or participant not found
+  /seerrplus/media/{mediaId}/requesters:
+    get:
+      summary: Get all users interested in a media item
+      tags:
+        - seerrplus
+      parameters:
+        - in: path
+          name: mediaId
+          required: true
+          schema:
+            type: number
+      responses:
+        '200':
+          description: Distinct interested users
+  /seerrplus/media/{mediaId}/removal-requests:
+    post:
+      summary: Request removal of available content
+      tags:
+        - seerrplus
+      parameters:
+        - in: path
+          name: mediaId
+          required: true
+          schema:
+            type: number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason:
+                  type: string
+                  enum: [free_space, no_interest, other]
+                message:
+                  type: string
+                is4k:
+                  type: boolean
+      responses:
+        '201':
+          description: Removal issue created
+        '403':
+          description: User is not interested in this content
+        '409':
+          description: Media unavailable or request already open
+  /seerrplus/removal-requests/{issueId}/approve:
+    post:
+      summary: Approve removal and delete content from Radarr or Sonarr
+      tags:
+        - seerrplus
+      parameters:
+        - in: path
+          name: issueId
+          required: true
+          schema:
+            type: number
+      responses:
+        '200':
+          description: Content removed and issue resolved
+        '403':
+          description: Administrator permission required
+  /seerrplus/removal-requests/{issueId}/reject:
+    post:
+      summary: Reject a content removal request
+      tags:
+        - seerrplus
+      parameters:
+        - in: path
+          name: issueId
+          required: true
+          schema:
+            type: number
+      responses:
+        '200':
+          description: Removal issue rejected and resolved
+        '403':
+          description: Administrator permission required
 security:
   - cookieAuth: []
   - apiKey: []

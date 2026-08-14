@@ -1,0 +1,44 @@
+# Seerr+ changelog
+
+## seerr-plus-v1.0.5
+
+- Translate the public repository README into English.
+- Keep the README focused exclusively on Plus Edition additions compared with the original Seerr.
+
+## seerr-plus-v1.0.4
+
+- Keep the interested-user panel aligned with the start of a wrapped desktop action row instead of pushing it to the far right.
+- Add desktop spacing below wrapped controls so they no longer touch the overview boundary.
+- Preserve the existing mobile layout and apply the correction consistently to movies and series.
+
+## seerr-plus-v1.0.3
+
+- Replace the upstream-style landing README with a focused Plus Edition project page.
+- Document only the functionality added or changed in relation to the original Seerr.
+- Add the GitHub repository description, suggested topics and Plex Movie Club announcement text.
+- Add an optional helper to configure the GitHub About description and repository topics.
+
+## seerr-plus-v1.0.2
+
+- Align the desktop action toolbar with the title instead of centering it below the poster.
+- Keep primary action buttons on the left and the interested-user panel on the right when space permits.
+- Preserve the existing responsive mobile layout.
+
+## seerr-plus-v1.0.1
+
+- Prevent long movie and series names from being compressed into a narrow column by large action/interest controls.
+- Keep the release year together and preserve normal word wrapping.
+- Move actions to a dedicated row at medium desktop widths and constrain/wrap them on wide displays.
+
+## seerr-plus-v1.0 — stable baseline
+
+- Multiple interested users share one Seerr media request without duplicate Radarr/Sonarr acquisitions.
+- Requested-by and participant lists in user and administration views.
+- Users can withdraw their interest; empty requests expose an administrator warning.
+- Availability emails fan out to all interested users and can be manually resent.
+- Available content supports user removal requests with reasons, comments and administrator approval/rejection.
+- Approved removals delete the title and files through Radarr/Sonarr.
+- Removal controls and emails are limited to administrators or users interested in the matching standard/4K edition.
+- Black Plus Edition identity, localized Seerr+ controls and upstream-compatible internal middleware.
+- Plex collection synchronization event/adapter scaffold, disabled until an adapter is registered.
+- SQLite and PostgreSQL migrations preserve existing Seerr users and requests.

@@ -7,6 +7,7 @@ import { User } from '@server/entity/User';
 import { initI18n } from '@server/i18n';
 import { startJobs } from '@server/job/schedule';
 import notificationManager from '@server/lib/notifications';
+import { initializeSeerrPlus } from '@server/lib/seerrplus';
 import DiscordAgent from '@server/lib/notifications/agents/discord';
 import EmailAgent from '@server/lib/notifications/agents/email';
 import GotifyAgent from '@server/lib/notifications/agents/gotify';
@@ -84,6 +85,7 @@ app
     restartFlag.initializeSettings(settings);
 
     initI18n();
+    initializeSeerrPlus();
 
     setForceIpv4First(settings.network.forceIpv4First);
 

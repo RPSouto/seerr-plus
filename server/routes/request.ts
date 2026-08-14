@@ -15,6 +15,7 @@ import {
   QuotaRestrictedError,
   RequestPermissionError,
 } from '@server/entity/MediaRequest';
+import MediaRequestParticipant from '@server/entity/MediaRequestParticipant';
 import SeasonRequest from '@server/entity/SeasonRequest';
 import { User } from '@server/entity/User';
 import type {
@@ -615,6 +616,16 @@ requestRoutes.delete('/:requestId', async (req, res, next) => {
       return next({
         status: 401,
         message: 'You do not have permission to delete this request.',
+      });
+    }
+
+    const participantCount = await getRepository(
+      MediaRequestParticipant
+    ).count({ where: { request: { id: request.id } } });
+    if (participantCount > 0) {
+      return next({
+        status: 409,
+        message: `This request still has ${participantCount} interested user(s).`,
       });
     }
 
