@@ -8326,6 +8326,302 @@ paths:
           description: Removal issue rejected and resolved
         '403':
           description: Administrator permission required
+  /seerrplus/movie-club:
+    get:
+      summary: Get the active Seerr+ Movie Club session
+      tags:
+        - seerrplus
+      responses:
+        '200':
+          description: Active Movie Club session or null
+  /seerrplus/movie-club/eligible:
+    get:
+      summary: List requested movies available in Plex for Movie Club voting
+      tags:
+        - seerrplus
+      parameters:
+        - in: query
+          name: sessionId
+          required: false
+          schema:
+            type: number
+      responses:
+        '200':
+          description: Eligible Movie Club candidates
+        '403':
+          description: Administrator permission required
+  /seerrplus/movie-club/users:
+    get:
+      summary: List users that can be assigned as Movie Club curators
+      tags:
+        - seerrplus
+      responses:
+        '200':
+          description: Seerr users
+        '403':
+          description: Administrator permission required
+  /seerrplus/movie-club/history:
+    get:
+      summary: Get recent Movie Club winners
+      tags:
+        - seerrplus
+      responses:
+        '200':
+          description: Up to twelve previous Film of the Week sessions
+  /seerrplus/movie-club/suggestions/{mediaId}:
+    get:
+      summary: Get the current user's weekly Movie Club suggestion state
+      tags:
+        - seerrplus
+      parameters:
+        - in: path
+          name: mediaId
+          required: true
+          schema:
+            type: number
+      responses:
+        '200':
+          description: Weekly suggestion state and count
+    post:
+      summary: Suggest an available movie for this week's Movie Club
+      tags:
+        - seerrplus
+      parameters:
+        - in: path
+          name: mediaId
+          required: true
+          schema:
+            type: number
+      responses:
+        '200':
+          description: Movie suggested
+        '404':
+          description: Movie not found
+        '409':
+          description: Movie is not available in Plex
+    delete:
+      summary: Withdraw the current user's Movie Club suggestion
+      tags:
+        - seerrplus
+      parameters:
+        - in: path
+          name: mediaId
+          required: true
+          schema:
+            type: number
+      responses:
+        '200':
+          description: Suggestion withdrawn
+  /seerrplus/movie-club/sessions:
+    post:
+      summary: Create a Movie Club voting session
+      tags:
+        - seerrplus
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [mediaIds, closesAt]
+              properties:
+                mediaIds:
+                  type: array
+                  minItems: 0
+                  maxItems: 4
+                  uniqueItems: true
+                  description: Leave empty when assigning responsible users to choose four candidates before voting opens.
+                  items:
+                    type: number
+                closesAt:
+                  type: string
+                  format: date-time
+                startsAt:
+                  type: string
+                  format: date-time
+                  nullable: true
+                  description: Future time when voting becomes public and notification emails are sent. Null starts immediately.
+                whatsappUrl:
+                  type: string
+                  nullable: true
+                curatorUserIds:
+                  type: array
+                  uniqueItems: true
+                  items:
+                    type: number
+              additionalProperties: false
+      responses:
+        '201':
+          description: Movie Club voting session created
+        '400':
+          description: Invalid candidates or closing date
+        '403':
+          description: Administrator permission required
+        '409':
+          description: Another Movie Club session is active
+  /seerrplus/movie-club/sessions/{sessionId}/vote:
+    post:
+      summary: Cast or change the current user's Movie Club vote
+      tags:
+        - seerrplus
+      parameters:
+        - in: path
+          name: sessionId
+          required: true
+          schema:
+            type: number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [candidateId]
+              properties:
+                candidateId:
+                  type: number
+              additionalProperties: false
+      responses:
+        '204':
+          description: Vote recorded
+        '404':
+          description: Session or candidate not found
+        '409':
+          description: Voting is closed
+  /seerrplus/movie-club/sessions/{sessionId}:
+    patch:
+      summary: Edit a Movie Club session
+      tags:
+        - seerrplus
+      parameters:
+        - in: path
+          name: sessionId
+          required: true
+          schema:
+            type: number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                mediaIds:
+                  type: array
+                  minItems: 2
+                  maxItems: 4
+                  uniqueItems: true
+                  items:
+                    type: number
+                closesAt:
+                  type: string
+                  format: date-time
+                startsAt:
+                  type: string
+                  format: date-time
+                  nullable: true
+                whatsappUrl:
+                  type: string
+                  nullable: true
+                curatorUserIds:
+                  type: array
+                  uniqueItems: true
+                  items:
+                    type: number
+              additionalProperties: false
+      responses:
+        '200':
+          description: Movie Club session updated
+        '400':
+          description: Invalid candidates or closing date
+        '403':
+          description: Administrator permission required
+        '404':
+          description: Session not found
+    delete:
+      summary: Delete a Movie Club session
+      tags:
+        - seerrplus
+      parameters:
+        - in: path
+          name: sessionId
+          required: true
+          schema:
+            type: number
+      responses:
+        '204':
+          description: Movie Club session deleted
+        '403':
+          description: Administrator permission required
+        '404':
+          description: Session not found
+  /seerrplus/movie-club/sessions/{sessionId}/close:
+    post:
+      summary: Close the current Movie Club session and allow a new vote
+      tags:
+        - seerrplus
+      parameters:
+        - in: path
+          name: sessionId
+          required: true
+          schema:
+            type: number
+      responses:
+        '204':
+          description: Movie Club session closed
+        '403':
+          description: Administrator permission required
+        '404':
+          description: Session not found
+  /seerrplus/movie-club/sessions/{sessionId}/resolve:
+    post:
+      summary: Resolve a Movie Club vote or start a 24-hour tie-break
+      tags:
+        - seerrplus
+      parameters:
+        - in: path
+          name: sessionId
+          required: true
+          schema:
+            type: number
+      responses:
+        '200':
+          description: Winner selected or tie-break started
+        '403':
+          description: Movie Club manager permission required
+        '404':
+          description: Session not found
+        '409':
+          description: Voting is not active
+  /seerrplus/movie-club/sessions/{sessionId}/select:
+    post:
+      summary: Select the Movie Club Film of the Week
+      tags:
+        - seerrplus
+      parameters:
+        - in: path
+          name: sessionId
+          required: true
+          schema:
+            type: number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [candidateId]
+              properties:
+                candidateId:
+                  type: number
+              additionalProperties: false
+      responses:
+        '204':
+          description: Film of the Week selected
+        '403':
+          description: Administrator permission required
+        '404':
+          description: Session or candidate not found
 security:
   - cookieAuth: []
   - apiKey: []

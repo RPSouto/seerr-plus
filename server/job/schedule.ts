@@ -1,5 +1,6 @@
 import { MediaServerType } from '@server/constants/server';
 import blocklistedTagsProcessor from '@server/job/blocklistedTagsProcessor';
+import { startMovieClubScheduler } from '@server/job/movieClubScheduler';
 import availabilitySync from '@server/lib/availabilitySync';
 import downloadTracker from '@server/lib/downloadtracker';
 import ImageProxy from '@server/lib/imageproxy';
@@ -258,6 +259,8 @@ export const startJobs = (): void => {
     running: () => blocklistedTagsProcessor.status().running,
     cancelFn: () => blocklistedTagsProcessor.cancel(),
   });
+
+  startMovieClubScheduler();
 
   logger.info('Scheduled jobs loaded', { label: 'Jobs' });
 };

@@ -4,48 +4,158 @@
 
 <p align="center">
   <strong>PLUS EDITION</strong><br>
-  A collaborative experience for Plex media requests and management.
+  Collaborative Plex requests, shared media management, and a weekly Movie Club.
 </p>
 
 # Seerr Plus Edition
 
-**Seerr Plus Edition** extends [Seerr](https://github.com/seerr-team/seerr) by turning individual media requests into a shared experience for members of a Plex library.
+Seerr Plus Edition is an independent fork of
+[Seerr](https://github.com/seerr-team/seerr) for private Plex communities. It
+keeps Seerr's acquisition workflow while adding collaboration around requests,
+availability, library cleanup, and choosing a Film of the Week.
 
-The project keeps the Seerr core as close as possible to the original release and implements its additional features in a dedicated internal layer. This allows multiple users to express interest in the same movie or series without creating duplicate acquisition requests in Radarr or Sonarr.
+The current release is **seerr-plus-v1.6.2**, based on **Seerr v3.4.1**.
 
-## What Plus Edition adds to Seerr
+## What Plus Edition adds
 
-- **Multiple interested users per request:** different users can join the same media request while only one acquisition is sent to Radarr or Sonarr.
-- **Request participant visibility:** displays the original requester and every interested user on media pages and in the administration interface.
-- **Interest withdrawal:** each user can withdraw their own interest. When no interested users remain, an administrator is warned before the request is removed.
-- **Shared availability notifications:** when media becomes available in Plex or is manually marked as available, an email can be sent to every interested user who has this notification enabled.
-- **Availability notification resend:** administrators can resend the availability notification to interested users from the interface.
-- **Removal requests:** after watching a title, an interested user can request its removal and provide a reason, such as freeing storage space or no longer being interested.
-- **Removal management:** administrators can review, approve, or reject removal requests and can directly remove any managed title.
-- **Radarr/Sonarr removal:** an approved removal can delete the title and its files through the associated service.
-- **Consistent permissions:** removal controls and notifications are available to administrators for all managed media and to other users only for media in which they participate, with separate handling for standard and 4K editions.
-- **Plex collection scaffolding:** provides an internal foundation for future Plex collection synchronization, disabled until an adapter is configured.
-- **Localized, responsive interface:** the new controls follow Seerr's supported languages and work across desktop and mobile layouts.
-- **Distinct identity:** a black theme and the visible **Plus Edition** name make this installation immediately distinguishable from the original Seerr.
-- **Safe migration:** SQLite and PostgreSQL migrations preserve existing users, requests, and configuration.
+### Shared requests and interests
 
-## Project philosophy
+- Several users can register interest in the same movie or series.
+- Seerr still creates only one acquisition request in Radarr or Sonarr.
+- Media and administration pages show the original requester and all interested
+  users.
+- Users can withdraw their own interest without affecting other participants.
+- When the last interested user leaves, administrators receive a warning before
+  the underlying request can be removed.
+- Existing Seerr requests are migrated into the participant model without
+  losing their original requester.
 
-Plus Edition does not replace or duplicate Seerr's request workflow. It adds a social and administrative layer to the original request:
+### Availability notifications
+
+- Every interested user can receive the Media Available email when a title is
+  detected in Plex or manually marked as available.
+- Each user's existing Seerr email notification preference is respected.
+- Administrators can resend an availability notification from the interface.
+- Delivery logging helps administrators confirm whether the mail server
+  accepted each notification.
+
+### Removal workflow
+
+- Interested users can request removal after a title becomes available.
+- Removal reasons include **Free Space**, **No Longer Interested**, and a custom
+  explanation.
+- Administrators can approve, reject, comment on, or reopen a removal request.
+- Administrators can request removal for any managed title and remove an entire
+  title directly.
+- Approval can remove the title and its files from the associated Radarr or
+  Sonarr server.
+- Buttons and email recipients use the same permission rules: administrators
+  can manage all media, while regular users see removal controls only for media
+  in which they participate.
+- Standard and 4K editions are handled independently.
+
+### Movie Club
+
+- Users can suggest any movie already available in Plex for the current week.
+- Suggestions can be withdrawn and reset with the new week, beginning on Monday
+  in UTC.
+- The candidate picker displays a weekly top 10, prioritizing community
+  suggestions and then the number of interested users.
+- An administrator can choose two to four candidates directly or assign one or
+  more responsible users to choose exactly four films.
+- Voting can start immediately or at a scheduled date and time.
+- The voting deadline can use the one-week preset or a custom date and time.
+- Scheduled votes remain private and editable until they open automatically.
+- Each user has one vote and can change it while voting is open.
+- Requester identities remain hidden during candidate preparation and voting;
+  only anonymous interest counts are shown.
+- Administrators can edit or delete a session in any state and start again when
+  necessary.
+- The result identifies the Film of the Week and the users who originally
+  requested it.
+- In a tie, votes are cleared, the lowest-ranked candidate is removed, and the
+  vote is extended for another 24 hours.
+- The Movie Club page includes recent winners and an optional WhatsApp group
+  link for the discussion.
+- Assignment, voting, result, and tie-break emails contain a direct link to the
+  Movie Club page.
+- The Discover banner appears only when a vote is active or a Film of the Week
+  has been selected.
+
+### Plus Edition interface
+
+- A black visual identity distinguishes Plus Edition from upstream Seerr.
+- The sidebar and application branding display **Plus Edition**.
+- New controls are responsive on desktop and mobile.
+- New interface messages are available in all Seerr locale catalogs, with
+  native Portuguese and English text and English fallback text elsewhere.
+
+### Extension layer
+
+- Seerr+ functionality is isolated in entities, migrations, routes,
+  subscribers, internal helpers, and frontend components.
+- A Plex collection synchronization adapter is scaffolded for future use and is
+  disabled unless explicitly configured.
+- SQLite and PostgreSQL migrations preserve existing Seerr users, requests,
+  settings, and media data.
+
+## How shared acquisition works
 
 ```text
-1 title in Seerr
-        ↓
-1 request in Radarr/Sonarr
-        ↓
-multiple interested users
-        ↓
-shared notifications and decisions
+One title in Seerr
+        |
+One request in Radarr or Sonarr
+        |
+Multiple interested Plex users
+        |
+Shared availability, voting, and removal decisions
 ```
 
-## Base project and license
+Joining an existing request never creates a duplicate Radarr or Sonarr
+acquisition.
 
-This version is based on **Seerr v3.4.1** and retains the license of the original project. Seerr Plus Edition is an independent fork and is not an official product of the Seerr team.
+## Docker deployment
 
-- Original project: [seerr-team/seerr](https://github.com/seerr-team/seerr)
+Build the image from the Seerr+ source checkout:
+
+```bash
+cd ~/Docker/Seerr-Plus
+
+sudo docker build --no-cache \
+  --build-arg COMMIT_TAG=seerr-plus-v1.6.2 \
+  -t local/seerr-plus:1.6.2 \
+  -t local/seerr-plus:3.4.1 .
+
+cd ~/Docker/Seerr-Plus-Deploy
+sudo docker compose up -d --force-recreate
+```
+
+Keep the existing Seerr configuration volume mounted at `/app/config`. The
+application runs the required SQLite or PostgreSQL migrations during startup.
+
+For links in Movie Club emails, configure Seerr's public application URL, for
+example:
+
+```text
+https://seerr.example.com
+```
+
+## Versioning
+
+Seerr+ releases use the `seerr-plus-vMAJOR.MINOR.PATCH` format. Release branches
+and annotated Git tags use the same name.
+
+To publish the current checkout to the private Seerr+ remote:
+
+```bash
+bash scripts/seerr-plus-release.sh seerr-plus-v1.6.2
+```
+
+## Upstream and license
+
+Seerr Plus Edition is based on Seerr but is not an official product of the
+Seerr team.
+
+- Upstream project: [seerr-team/seerr](https://github.com/seerr-team/seerr)
+- Seerr+ repository: [RPSouto/seerr-plus](https://github.com/RPSouto/seerr-plus)
 - License: [MIT](./LICENSE)

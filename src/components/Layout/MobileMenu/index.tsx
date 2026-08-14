@@ -11,6 +11,7 @@ import {
   EyeSlashIcon,
   FilmIcon,
   SparklesIcon,
+  TrophyIcon,
   TvIcon,
   UsersIcon,
 } from '@heroicons/react/24/outline';
@@ -21,6 +22,7 @@ import {
   EyeSlashIcon as FilledEyeSlashIcon,
   FilmIcon as FilledFilmIcon,
   SparklesIcon as FilledSparklesIcon,
+  TrophyIcon as FilledTrophyIcon,
   TvIcon as FilledTvIcon,
   UsersIcon as FilledUsersIcon,
   XMarkIcon,
@@ -98,6 +100,13 @@ const MobileMenu = ({
       svgIcon: <ClockIcon className="h-6 w-6" />,
       svgIconSelected: <FilledClockIcon className="h-6 w-6" />,
       activeRegExp: /^\/requests/,
+    },
+    {
+      href: '/movie-club',
+      content: intl.formatMessage(menuMessages.movieclub),
+      svgIcon: <TrophyIcon className="h-6 w-6" />,
+      svgIconSelected: <FilledTrophyIcon className="h-6 w-6" />,
+      activeRegExp: /^\/movie-club/,
     },
     {
       href: '/blocklist',

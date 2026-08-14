@@ -22,6 +22,7 @@ import PersonCard from '@app/components/PersonCard';
 import RequestButton from '@app/components/RequestButton';
 import RequestInterestUsers from '@app/components/SeerrPlus/RequestInterestUsers';
 import RemovalRequestButton from '@app/components/SeerrPlus/RemovalRequestButton';
+import MovieClubSuggestButton from '@app/components/SeerrPlus/MovieClub/SuggestButton';
 import Slider from '@app/components/Slider';
 import StatusBadge from '@app/components/StatusBadge';
 import useDeepLinks from '@app/hooks/useDeepLinks';
@@ -634,6 +635,13 @@ const MovieDetails = ({ movie }: MovieDetailsProps) => {
             media={data.mediaInfo}
             tmdbId={data.id}
             onUpdate={() => revalidate()}
+          />
+          <MovieClubSuggestButton
+            mediaId={data.mediaInfo?.id}
+            available={
+              data.mediaInfo?.status === MediaStatus.AVAILABLE ||
+              data.mediaInfo?.status4k === MediaStatus.AVAILABLE
+            }
           />
           <RemovalRequestButton
             mediaId={data.mediaInfo?.id}
