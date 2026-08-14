@@ -28,6 +28,7 @@ The project keeps the Seerr core as close as possible to the original release an
 - **Localized, responsive interface:** the new controls follow Seerr's supported languages and work across desktop and mobile layouts.
 - **Distinct identity:** a black theme and the visible **Plus Edition** name make this installation immediately distinguishable from the original Seerr.
 - **Safe migration:** SQLite and PostgreSQL migrations preserve existing users, requests, and configuration.
+- **Movie Club:** users can suggest available films each week; administrators and responsible users choose four candidates from a top 10 ranked by weekly suggestions and community interest, schedule the exact voting period, and automatically notify users with a direct voting link when it opens.
 
 ## Project philosophy
 

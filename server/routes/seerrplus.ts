@@ -22,8 +22,11 @@ import {
 import { removeMediaFromService } from '@server/lib/seerrplus/removals';
 import type { NextFunction, Request, Response } from 'express';
 import { Router } from 'express';
+import movieClubRoutes from './movieclub';
 
 const seerrPlusRoutes = Router();
+
+seerrPlusRoutes.use('/movie-club', movieClubRoutes);
 
 const mapUser = (user: User) => ({
   id: user.id,
