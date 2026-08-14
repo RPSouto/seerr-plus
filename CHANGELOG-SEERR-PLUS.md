@@ -1,5 +1,11 @@
 # Seerr+ changelog
 
+## seerr-plus-v1.0.4
+
+- Keep the interested-user panel aligned with the start of a wrapped desktop action row instead of pushing it to the far right.
+- Add desktop spacing below wrapped controls so they no longer touch the overview boundary.
+- Preserve the existing mobile layout and apply the correction consistently to movies and series.
+
 ## seerr-plus-v1.0.3
 
 - Replace the upstream-style landing README with a focused Plus Edition project page.
