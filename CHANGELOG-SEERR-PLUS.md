@@ -1,5 +1,11 @@
 # Seerr+ changelog
 
+## seerr-plus-v1.0.1
+
+- Prevent long movie and series names from being compressed into a narrow column by large action/interest controls.
+- Keep the release year together and preserve normal word wrapping.
+- Move actions to a dedicated row at medium desktop widths and constrain/wrap them on wide displays.
+
 ## seerr-plus-v1.0 — stable baseline
 
 - Multiple interested users share one Seerr media request without duplicate Radarr/Sonarr acquisitions.

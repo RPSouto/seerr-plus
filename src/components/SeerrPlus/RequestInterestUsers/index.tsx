@@ -32,7 +32,7 @@ const RequestInterestUsers = ({ requestId }: { requestId?: number }) => {
   }
 
   return (
-    <div className="ml-3 flex min-w-0 flex-wrap items-center gap-2 rounded-md bg-gray-800/80 px-3 py-2 text-sm ring-1 ring-gray-700">
+    <div className="ml-3 flex min-w-0 max-w-full flex-wrap items-center gap-2 rounded-md bg-gray-800/80 px-3 py-2 text-sm ring-1 ring-gray-700">
       <span className="flex items-center font-medium text-gray-300">
         <UsersIcon className="mr-1.5 h-5 w-5" />
         {intl.formatMessage(messages.interested)}:

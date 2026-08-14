@@ -179,11 +179,11 @@
   }
 
   .media-header {
-    @apply flex flex-col items-center pt-4 xl:flex-row xl:items-end;
+    @apply flex flex-col items-center pt-4 xl:flex-row xl:flex-wrap xl:items-end;
   }
 
   .media-poster {
-    @apply w-32 overflow-hidden rounded shadow md:w-44 md:rounded-lg md:shadow-2xl xl:mr-4 xl:w-52;
+    @apply w-32 flex-shrink-0 overflow-hidden rounded shadow md:w-44 md:rounded-lg md:shadow-2xl xl:mr-4 xl:w-52;
   }
 
   .media-status {
@@ -191,15 +191,18 @@
   }
 
   .media-title {
-    @apply mt-4 flex flex-1 flex-col text-center text-white xl:mr-4 xl:mt-0 xl:text-left;
+    @apply mt-4 flex min-w-0 flex-1 flex-col text-center text-white xl:mr-4 xl:mt-0 xl:min-w-80 xl:text-left;
   }
 
   .media-title > h1 {
-    @apply text-2xl font-bold xl:text-4xl;
+    @apply max-w-full text-2xl font-bold xl:text-4xl;
+    overflow-wrap: normal;
+    word-break: normal;
+    text-wrap: balance;
   }
 
   h1 .media-year {
-    @apply text-2xl;
+    @apply whitespace-nowrap text-2xl;
   }
 
   .media-attributes {
@@ -211,11 +214,11 @@
   }
 
   .media-actions {
-    @apply relative mt-4 flex flex-shrink-0 flex-wrap items-center justify-center sm:flex-nowrap sm:justify-end xl:mt-0;
+    @apply relative mt-4 flex w-full min-w-0 flex-wrap items-center justify-center gap-y-3 sm:justify-end xl:mt-4 2xl:mt-0 2xl:w-[55%] 2xl:justify-end;
   }
 
   .media-actions > * {
-    @apply mb-3 sm:mb-0;
+    @apply mb-0 max-w-full;
   }
 
   .media-overview {
