@@ -1,5 +1,12 @@
 # Seerr+ changelog
 
+## seerr-plus-v1.0.3
+
+- Replace the upstream-style landing README with a focused Plus Edition project page.
+- Document only the functionality added or changed in relation to the original Seerr.
+- Add the GitHub repository description, suggested topics and Plex Movie Club announcement text.
+- Add an optional helper to configure the GitHub About description and repository topics.
+
 ## seerr-plus-v1.0.2
 
 - Align the desktop action toolbar with the title instead of centering it below the poster.

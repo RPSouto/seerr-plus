@@ -1,77 +1,51 @@
 <p align="center">
-<img src="./public/logo_full.svg" alt="Seerr" style="margin: 20px 0;">
+  <img src="./public/logo_full.svg" alt="Seerr Plus Edition" width="420">
 </p>
+
 <p align="center">
-<img src="https://github.com/seerr-team/seerr/actions/workflows/release.yml/badge.svg" alt="Seerr Release" />
-<img src="https://github.com/seerr-team/seerr/actions/workflows/ci.yml/badge.svg" alt="Seerr CI">
+  <strong>PLUS EDITION</strong><br>
+  Uma experiência colaborativa para pedidos e gestão de conteúdos Plex.
 </p>
-<p align="center">
-<a href="https://discord.gg/seerr"><img src="https://img.shields.io/discord/783137440809746482" alt="Discord"></a>
-<a href="https://hub.docker.com/r/seerr/seerr"><img src="https://img.shields.io/docker/pulls/seerr/seerr" alt="Docker pulls"></a>
-<a href="https://translate.seerr.dev/engage/seerr/"><img src="https://translate.seerr.dev/widget/seerr/svg-badge.svg" alt="Translation status" /></a>
-<a href="https://github.com/seerr-team/seerr/blob/develop/LICENSE"><img alt="GitHub" src="https://img.shields.io/github/license/seerr-team/seerr"></a>
 
-**Seerr** is a free and open source software application for managing requests for your media library. It integrates with the media server of your choice: [Jellyfin](https://jellyfin.org), [Plex](https://plex.tv), and [Emby](https://emby.media/). In addition, it integrates with your existing services, such as **[Sonarr](https://sonarr.tv/)**, **[Radarr](https://radarr.video/)**.
+# Seerr Plus Edition
 
-## Current Features
+O **Seerr Plus Edition** é uma extensão do [Seerr](https://github.com/seerr-team/seerr) criada para transformar pedidos individuais numa experiência partilhada entre os membros de uma biblioteca Plex.
 
-- Full Jellyfin/Emby/Plex integration including authentication with user import & management.
-- Support for **PostgreSQL** and **SQLite** databases.
-- Supports Movies, Shows and Mixed Libraries.
-- Ability to change email addresses for SMTP purposes.
-- Easy integration with your existing services. Currently, Seerr supports Sonarr and Radarr. More to come!
-- Jellyfin/Emby/Plex library scan, to keep track of the titles which are already available.
-- Customizable request system, which allows users to request individual seasons or movies in a friendly, easy-to-use interface.
-- Incredibly simple request management UI. Don't dig through the app to simply approve recent requests!
-- Granular permission system.
-- Support for various notification agents.
-- Mobile-friendly design, for when you need to approve requests on the go!
-- Support for watchlisting & blocklisting media.
+O projeto mantém o núcleo do Seerr tão próximo quanto possível da versão original e adiciona as novas funções numa camada interna própria. Assim, vários utilizadores podem demonstrar interesse no mesmo filme ou série sem criar pedidos duplicados no Radarr ou Sonarr.
 
-With more features on the way! Check out our [issue tracker](/../../issues) to see the features which have already been requested.
+## O que o Plus Edition acrescenta ao Seerr
 
-## Getting Started
+- **Vários interessados num único pedido:** diferentes utilizadores associam-se ao mesmo conteúdo, mantendo apenas uma aquisição no Radarr ou Sonarr.
+- **Identificação dos participantes:** mostra quem fez o pedido original e todos os utilizadores interessados, tanto nas páginas de conteúdo como na Administração.
+- **Retirar interesse:** cada utilizador pode retirar o próprio interesse; quando já não existem interessados, o administrador recebe um aviso antes de remover o pedido.
+- **Notificações de disponibilidade partilhadas:** quando o conteúdo fica disponível no Plex ou é marcado manualmente como disponível, o email pode ser enviado a todos os utilizadores interessados que tenham essa notificação ativa.
+- **Reenvio de disponibilidade:** o administrador pode reenviar a notificação aos interessados a partir da interface.
+- **Pedidos de remoção:** depois de ver um conteúdo, um utilizador interessado pode pedir a sua remoção e indicar um motivo, como “libertar espaço” ou “sem interesse”.
+- **Gestão de remoções:** os administradores podem analisar, aprovar ou rejeitar pedidos de remoção e remover diretamente qualquer conteúdo.
+- **Remoção no Radarr/Sonarr:** uma remoção aprovada pode apagar o título e os respetivos ficheiros através do serviço associado.
+- **Permissões coerentes:** o botão e as notificações de remoção são apresentados ao administrador em todos os conteúdos e aos restantes utilizadores apenas nos conteúdos em que participam, respeitando as edições normal e 4K.
+- **Scaffolding de coleções Plex:** inclui a base interna para futura sincronização de coleções, desativada até existir um adaptador configurado.
+- **Interface traduzida e responsiva:** os novos controlos acompanham os idiomas do Seerr e estão preparados para desktop e dispositivos móveis.
+- **Identidade própria:** tema preto e designação visível **Plus Edition**, permitindo distinguir imediatamente esta instalação do Seerr original.
+- **Migração segura:** inclui migrações SQLite/PostgreSQL para preservar utilizadores, pedidos e configurações existentes.
 
-Check out our documentation for instructions on how to install and run Seerr:
+## Filosofia do projeto
 
-https://docs.seerr.dev/getting-started/
+O Plus Edition não pretende substituir nem duplicar o funcionamento do Seerr. A sua função é acrescentar uma camada social e administrativa sobre o pedido original:
 
-## Preview
+```text
+1 conteúdo no Seerr
+        ↓
+1 pedido no Radarr/Sonarr
+        ↓
+vários utilizadores interessados
+        ↓
+notificações e decisões partilhadas
+```
 
-<img src="./public/preview.jpg" alt="Seerr application preview" />
+## Base e licença
 
-## Migrating from Overseerr/Jellyseerr to Seerr
+Esta versão deriva do **Seerr v3.4.1** e mantém a licença do projeto original. O Seerr Plus Edition é um fork independente e não é um produto oficial da equipa Seerr.
 
-Read our [release announcement](https://docs.seerr.dev/blog/seerr-release) to learn what Seerr means for Jellyseerr and Overseerr users.
-
-Please follow our [migration guide](https://docs.seerr.dev/migration-guide) for detailed instructions on migrating from Overseerr or Jellyseerr.
-
-## Support
-
-- Check out the [Seerr Documentation](https://docs.seerr.dev) before asking for help. Your question might already be in the docs!
-- You can get support on [Discord](https://discord.gg/seerr).
-- You can ask questions in the Help category of our [GitHub Discussions](/../../discussions).
-- Bug reports and feature requests can be submitted via [GitHub Issues](/../../issues).
-
-## API Documentation
-
-You can access the API documentation from your local Seerr install at http://localhost:5055/api-docs
-
-## Community
-
-You can ask questions, share ideas, and more in [GitHub Discussions](/../../discussions).
-
-If you would like to chat with other members of our growing community, [join the Seerr Discord server](https://discord.gg/seerr)!
-
-Our [Code of Conduct](./CODE_OF_CONDUCT.md) applies to all Seerr community channels.
-
-## Contributing
-
-You can help improve Seerr too! Check out our [Contribution Guide](./CONTRIBUTING.md) to get started.
-
-## Contributors ✨
-
-[![Contributors](https://opencollective.com/seerr/contributors.svg?width=890)](https://opencollective.com/seerr/#backers)
-
-[![Become a Backer](https://opencollective.com/seerr/backers.svg)](https://opencollective.com/seerr/#backers)
-[![Become a Sponsor](https://opencollective.com/seerr/sponsors.svg)](https://opencollective.com/seerr/#sponsors)
+- Projeto original: [seerr-team/seerr](https://github.com/seerr-team/seerr)
+- Licença: [MIT](./LICENSE)
