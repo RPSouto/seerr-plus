@@ -4,48 +4,48 @@
 
 <p align="center">
   <strong>PLUS EDITION</strong><br>
-  Uma experiência colaborativa para pedidos e gestão de conteúdos Plex.
+  A collaborative experience for Plex media requests and management.
 </p>
 
 # Seerr Plus Edition
 
-O **Seerr Plus Edition** é uma extensão do [Seerr](https://github.com/seerr-team/seerr) criada para transformar pedidos individuais numa experiência partilhada entre os membros de uma biblioteca Plex.
+**Seerr Plus Edition** extends [Seerr](https://github.com/seerr-team/seerr) by turning individual media requests into a shared experience for members of a Plex library.
 
-O projeto mantém o núcleo do Seerr tão próximo quanto possível da versão original e adiciona as novas funções numa camada interna própria. Assim, vários utilizadores podem demonstrar interesse no mesmo filme ou série sem criar pedidos duplicados no Radarr ou Sonarr.
+The project keeps the Seerr core as close as possible to the original release and implements its additional features in a dedicated internal layer. This allows multiple users to express interest in the same movie or series without creating duplicate acquisition requests in Radarr or Sonarr.
 
-## O que o Plus Edition acrescenta ao Seerr
+## What Plus Edition adds to Seerr
 
-- **Vários interessados num único pedido:** diferentes utilizadores associam-se ao mesmo conteúdo, mantendo apenas uma aquisição no Radarr ou Sonarr.
-- **Identificação dos participantes:** mostra quem fez o pedido original e todos os utilizadores interessados, tanto nas páginas de conteúdo como na Administração.
-- **Retirar interesse:** cada utilizador pode retirar o próprio interesse; quando já não existem interessados, o administrador recebe um aviso antes de remover o pedido.
-- **Notificações de disponibilidade partilhadas:** quando o conteúdo fica disponível no Plex ou é marcado manualmente como disponível, o email pode ser enviado a todos os utilizadores interessados que tenham essa notificação ativa.
-- **Reenvio de disponibilidade:** o administrador pode reenviar a notificação aos interessados a partir da interface.
-- **Pedidos de remoção:** depois de ver um conteúdo, um utilizador interessado pode pedir a sua remoção e indicar um motivo, como “libertar espaço” ou “sem interesse”.
-- **Gestão de remoções:** os administradores podem analisar, aprovar ou rejeitar pedidos de remoção e remover diretamente qualquer conteúdo.
-- **Remoção no Radarr/Sonarr:** uma remoção aprovada pode apagar o título e os respetivos ficheiros através do serviço associado.
-- **Permissões coerentes:** o botão e as notificações de remoção são apresentados ao administrador em todos os conteúdos e aos restantes utilizadores apenas nos conteúdos em que participam, respeitando as edições normal e 4K.
-- **Scaffolding de coleções Plex:** inclui a base interna para futura sincronização de coleções, desativada até existir um adaptador configurado.
-- **Interface traduzida e responsiva:** os novos controlos acompanham os idiomas do Seerr e estão preparados para desktop e dispositivos móveis.
-- **Identidade própria:** tema preto e designação visível **Plus Edition**, permitindo distinguir imediatamente esta instalação do Seerr original.
-- **Migração segura:** inclui migrações SQLite/PostgreSQL para preservar utilizadores, pedidos e configurações existentes.
+- **Multiple interested users per request:** different users can join the same media request while only one acquisition is sent to Radarr or Sonarr.
+- **Request participant visibility:** displays the original requester and every interested user on media pages and in the administration interface.
+- **Interest withdrawal:** each user can withdraw their own interest. When no interested users remain, an administrator is warned before the request is removed.
+- **Shared availability notifications:** when media becomes available in Plex or is manually marked as available, an email can be sent to every interested user who has this notification enabled.
+- **Availability notification resend:** administrators can resend the availability notification to interested users from the interface.
+- **Removal requests:** after watching a title, an interested user can request its removal and provide a reason, such as freeing storage space or no longer being interested.
+- **Removal management:** administrators can review, approve, or reject removal requests and can directly remove any managed title.
+- **Radarr/Sonarr removal:** an approved removal can delete the title and its files through the associated service.
+- **Consistent permissions:** removal controls and notifications are available to administrators for all managed media and to other users only for media in which they participate, with separate handling for standard and 4K editions.
+- **Plex collection scaffolding:** provides an internal foundation for future Plex collection synchronization, disabled until an adapter is configured.
+- **Localized, responsive interface:** the new controls follow Seerr's supported languages and work across desktop and mobile layouts.
+- **Distinct identity:** a black theme and the visible **Plus Edition** name make this installation immediately distinguishable from the original Seerr.
+- **Safe migration:** SQLite and PostgreSQL migrations preserve existing users, requests, and configuration.
 
-## Filosofia do projeto
+## Project philosophy
 
-O Plus Edition não pretende substituir nem duplicar o funcionamento do Seerr. A sua função é acrescentar uma camada social e administrativa sobre o pedido original:
+Plus Edition does not replace or duplicate Seerr's request workflow. It adds a social and administrative layer to the original request:
 
 ```text
-1 conteúdo no Seerr
+1 title in Seerr
         ↓
-1 pedido no Radarr/Sonarr
+1 request in Radarr/Sonarr
         ↓
-vários utilizadores interessados
+multiple interested users
         ↓
-notificações e decisões partilhadas
+shared notifications and decisions
 ```
 
-## Base e licença
+## Base project and license
 
-Esta versão deriva do **Seerr v3.4.1** e mantém a licença do projeto original. O Seerr Plus Edition é um fork independente e não é um produto oficial da equipa Seerr.
+This version is based on **Seerr v3.4.1** and retains the license of the original project. Seerr Plus Edition is an independent fork and is not an official product of the Seerr team.
 
-- Projeto original: [seerr-team/seerr](https://github.com/seerr-team/seerr)
-- Licença: [MIT](./LICENSE)
+- Original project: [seerr-team/seerr](https://github.com/seerr-team/seerr)
+- License: [MIT](./LICENSE)

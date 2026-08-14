@@ -1,5 +1,10 @@
 # Seerr+ changelog
 
+## seerr-plus-v1.0.5
+
+- Translate the public repository README into English.
+- Keep the README focused exclusively on Plus Edition additions compared with the original Seerr.
+
 ## seerr-plus-v1.0.4
 
 - Keep the interested-user panel aligned with the start of a wrapped desktop action row instead of pushing it to the far right.
