@@ -110,6 +110,13 @@ issueRoutes.post<Record<string, string>, Issue, IssueRequestBody>(
       return next({ status: 500, message: 'User missing from request.' });
     }
 
+    if (req.body.issueType === IssueType.REMOVAL) {
+      return next({
+        status: 400,
+        message: 'Use the Seerr+ removal request endpoint.',
+      });
+    }
+
     const issueRepository = getRepository(Issue);
     const mediaRepository = getRepository(Media);
     const userRepository = getRepository(User);
@@ -340,6 +347,13 @@ issueRoutes.post<{ issueId: string; status: string }, Issue>(
       const issue = await issueRepository.findOneOrFail({
         where: { id: Number(req.params.issueId) },
       });
+
+      if (issue.issueType === IssueType.REMOVAL) {
+        return next({
+          status: 409,
+          message: 'Removal requests require an approve or reject decision.',
+        });
+      }
 
       if (
         !req.user?.hasPermission(Permission.MANAGE_ISSUES) &&

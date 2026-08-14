@@ -39,6 +39,7 @@ import movieRoutes from './movie';
 import personRoutes from './person';
 import requestRoutes from './request';
 import searchRoutes from './search';
+import seerrPlusRoutes from './seerrplus';
 import serviceRoutes from './service';
 import tvRoutes from './tv';
 import user from './user';
@@ -157,6 +158,7 @@ router.use('/settings', isAuthenticated(Permission.ADMIN), settingsRoutes);
 router.use('/search', isAuthenticated(), searchRoutes);
 router.use('/discover', isAuthenticated(), discoverRoutes);
 router.use('/request', isAuthenticated(), requestRoutes);
+router.use('/seerrplus', isAuthenticated(), seerrPlusRoutes);
 router.use('/watchlist', isAuthenticated(), watchlistRoutes);
 router.use('/blocklist', isAuthenticated(), blocklistRoutes);
 router.use(

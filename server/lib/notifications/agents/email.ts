@@ -321,6 +321,13 @@ class EmailAgent
                 payload.notifyUser.settings?.locale as AvailableLocale
               )
             );
+            logger.info('Email notification accepted by the mail server', {
+              label: 'Notifications',
+              recipient: payload.notifyUser.displayName,
+              userId: payload.notifyUser.id,
+              type: Notification[type],
+              subject: payload.subject,
+            });
           } else {
             logger.warn('Invalid email address provided for user', {
               label: 'Notifications',

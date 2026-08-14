@@ -21,6 +21,7 @@ import ManageSlideOver from '@app/components/ManageSlideOver';
 import MediaSlider from '@app/components/MediaSlider';
 import PersonCard from '@app/components/PersonCard';
 import RequestButton from '@app/components/RequestButton';
+import RemovalRequestButton from '@app/components/SeerrPlus/RemovalRequestButton';
 import RequestModal from '@app/components/RequestModal';
 import Slider from '@app/components/Slider';
 import StatusBadge from '@app/components/StatusBadge';
@@ -674,6 +675,25 @@ const TvDetails = ({ tv }: TvDetailsProps) => {
             media={data?.mediaInfo}
             isShowComplete={isComplete}
             is4kShowComplete={is4kComplete}
+          />
+          <RemovalRequestButton
+            mediaId={data.mediaInfo?.id}
+            available={
+              data.mediaInfo?.status === MediaStatus.AVAILABLE ||
+              data.mediaInfo?.status === MediaStatus.PARTIALLY_AVAILABLE
+            }
+            available4k={
+              data.mediaInfo?.status4k === MediaStatus.AVAILABLE ||
+              data.mediaInfo?.status4k === MediaStatus.PARTIALLY_AVAILABLE
+            }
+            managed={
+              data.mediaInfo?.status !== MediaStatus.UNKNOWN &&
+              data.mediaInfo?.status !== MediaStatus.DELETED
+            }
+            managed4k={
+              data.mediaInfo?.status4k !== MediaStatus.UNKNOWN &&
+              data.mediaInfo?.status4k !== MediaStatus.DELETED
+            }
           />
           {(data.mediaInfo?.status === MediaStatus.AVAILABLE ||
             data.mediaInfo?.status === MediaStatus.PARTIALLY_AVAILABLE ||

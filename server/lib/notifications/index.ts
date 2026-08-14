@@ -1,3 +1,4 @@
+import { IssueType } from '@server/constants/issue';
 import type { User } from '@server/entity/User';
 import { Permission } from '@server/lib/permissions';
 import logger from '@server/logger';
@@ -71,7 +72,11 @@ export const shouldSendAdminNotification = (
 ): boolean => {
   return (
     user.id !== payload.notifyUser?.id &&
-    user.hasPermission(getAdminPermission(type)) &&
+    user.hasPermission(
+      payload.issue?.issueType === IssueType.REMOVAL
+        ? Permission.ADMIN
+        : getAdminPermission(type)
+    ) &&
     // Check if the user submitted this request (on behalf of themself OR another user)
     (type !== Notification.MEDIA_AUTO_APPROVED ||
       user.id !==

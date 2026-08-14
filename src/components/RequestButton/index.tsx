@@ -1,10 +1,14 @@
 import ButtonWithDropdown from '@app/components/Common/ButtonWithDropdown';
 import RequestModal from '@app/components/RequestModal';
 import useSettings from '@app/hooks/useSettings';
+import useToasts from '@app/hooks/useToasts';
 import { Permission, useUser } from '@app/hooks/useUser';
 import globalMessages from '@app/i18n/globalMessages';
 import defineMessages from '@app/utils/defineMessages';
-import { ArrowDownTrayIcon } from '@heroicons/react/24/outline';
+import {
+  ArrowDownTrayIcon,
+  UserPlusIcon,
+} from '@heroicons/react/24/outline';
 import {
   CheckIcon,
   InformationCircleIcon,
@@ -16,7 +20,7 @@ import type { MediaRequest } from '@server/entity/MediaRequest';
 import axios from 'axios';
 import { useMemo, useState } from 'react';
 import { useIntl } from 'react-intl';
-import { mutate } from 'swr';
+import useSWR, { mutate } from 'swr';
 
 const messages = defineMessages('components.RequestButton', {
   viewrequest: 'View Request',
@@ -35,7 +39,23 @@ const messages = defineMessages('components.RequestButton', {
     'Approve {requestCount, plural, one {4K Request} other {{requestCount} 4K Requests}}',
   decline4krequests:
     'Decline {requestCount, plural, one {4K Request} other {{requestCount} 4K Requests}}',
+  joinrequest: "I'm Interested",
+  withdrawinterest: 'Withdraw Interest',
+  interestadded: 'Your interest was added to the existing request.',
+  interestremoved: 'Your interest was removed from the request.',
+  requestempty:
+    'No interested users remain. An administrator can now delete the request.',
+  interesterror: 'Something went wrong while adding your interest.',
+  withdrawerror: 'Something went wrong while removing your interest.',
 });
+
+type RequestParticipantsResponse = {
+  users: { id: number }[];
+};
+
+type RemoveInterestResponse = {
+  canDeleteRequest: boolean;
+};
 
 interface ButtonOption {
   id: string;
@@ -64,9 +84,11 @@ const RequestButton = ({
   const intl = useIntl();
   const settings = useSettings();
   const { user, hasPermission } = useUser();
+  const { addToast } = useToasts();
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [showRequest4kModal, setShowRequest4kModal] = useState(false);
   const [editRequest, setEditRequest] = useState(false);
+  const [isJoiningRequest, setIsJoiningRequest] = useState(false);
 
   // All pending requests
   const activeRequests = media?.requests.filter(
@@ -91,6 +113,91 @@ const RequestButton = ({
         ) ?? active4kRequests[0])
       : undefined;
   }, [active4kRequests, user]);
+
+  // A movie can have an approved acquisition that is not yet available. The
+  // upstream UI hides the normal request button in this state, so Seerr+
+  // exposes a separate interest action against the existing acquisition.
+  const joinableMovieRequest = useMemo(
+    () =>
+      mediaType === 'movie'
+        ? media?.requests.find(
+            (request) =>
+              !request.is4k &&
+              (request.status === MediaRequestStatus.PENDING ||
+                request.status === MediaRequestStatus.APPROVED)
+          )
+        : undefined,
+    [media?.requests, mediaType]
+  );
+  const { data: requestParticipants, mutate: mutateRequestParticipants } =
+    useSWR<RequestParticipantsResponse>(
+      joinableMovieRequest
+        ? `/api/v1/seerrplus/requests/${joinableMovieRequest.id}/users`
+        : null
+    );
+  const hasJoinedMovieRequest = requestParticipants?.users.some(
+    (participant) => participant.id === user?.id
+  );
+
+  const joinMovieRequest = async (): Promise<void> => {
+    if (!joinableMovieRequest || isJoiningRequest) {
+      return;
+    }
+
+    setIsJoiningRequest(true);
+    try {
+      await axios.post(
+        `/api/v1/seerrplus/requests/${joinableMovieRequest.id}/users`,
+        {}
+      );
+      await mutateRequestParticipants();
+      onUpdate();
+      addToast(intl.formatMessage(messages.interestadded), {
+        appearance: 'success',
+        autoDismiss: true,
+      });
+    } catch {
+      addToast(intl.formatMessage(messages.interesterror), {
+        appearance: 'error',
+        autoDismiss: true,
+      });
+    } finally {
+      setIsJoiningRequest(false);
+    }
+  };
+
+  const withdrawMovieRequest = async (): Promise<void> => {
+    if (!joinableMovieRequest || !user || isJoiningRequest) {
+      return;
+    }
+
+    setIsJoiningRequest(true);
+    try {
+      const response = await axios.delete<RemoveInterestResponse>(
+        `/api/v1/seerrplus/requests/${joinableMovieRequest.id}/users/${user.id}`
+      );
+      await mutateRequestParticipants();
+      onUpdate();
+      addToast(
+        intl.formatMessage(
+          response.data.canDeleteRequest
+            ? messages.requestempty
+            : messages.interestremoved
+        ),
+        {
+          appearance: response.data.canDeleteRequest ? 'warning' : 'success',
+          autoDismiss: true,
+        }
+      );
+    } catch {
+      addToast(intl.formatMessage(messages.withdrawerror), {
+        appearance: 'error',
+        autoDismiss: true,
+      });
+    } finally {
+      setIsJoiningRequest(false);
+    }
+  };
 
   const modifyRequest = async (
     request: MediaRequest,
@@ -265,6 +372,35 @@ const RequestButton = ({
         }
       );
     }
+  }
+
+  if (
+    joinableMovieRequest &&
+    requestParticipants &&
+    !hasJoinedMovieRequest &&
+    hasPermission([Permission.REQUEST, Permission.REQUEST_MOVIE], {
+      type: 'or',
+    })
+  ) {
+    buttons.push({
+      id: 'join-request',
+      text: intl.formatMessage(messages.joinrequest),
+      action: joinMovieRequest,
+      svg: <UserPlusIcon />,
+    });
+  }
+
+  if (
+    joinableMovieRequest &&
+    requestParticipants &&
+    hasJoinedMovieRequest
+  ) {
+    buttons.push({
+      id: 'withdraw-interest',
+      text: intl.formatMessage(messages.withdrawinterest),
+      action: withdrawMovieRequest,
+      svg: <XMarkIcon />,
+    });
   }
 
   // Standard request button

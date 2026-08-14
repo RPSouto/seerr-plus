@@ -194,6 +194,9 @@ const Sidebar = ({
                         <Link href="/" className="relative block h-24 w-64">
                           <Image src="/logo_full.svg" alt="Logo" fill />
                         </Link>
+                        <span className="seerr-plus-brand">
+                          Plus Edition
+                        </span>
                       </span>
                     </div>
                     <nav className="mt-10 flex-1 space-y-4 px-4">
@@ -262,6 +265,7 @@ const Sidebar = ({
                       loading="eager"
                     />
                   </Link>
+                  <span className="seerr-plus-brand">Plus Edition</span>
                 </span>
               </div>
               <nav className="mt-8 flex-1 space-y-4 px-4">

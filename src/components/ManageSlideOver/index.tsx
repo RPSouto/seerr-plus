@@ -72,6 +72,8 @@ const messages = defineMessages('components.ManageSlideOver', {
   mark4kavailable: 'Mark as Available in 4K',
   markallseasonsavailable: 'Mark All Seasons as Available',
   markallseasons4kavailable: 'Mark All Seasons as Available in 4K',
+  resendAvailabilityEmail: 'Resend Availability Emails',
+  resendAvailabilityEmail4k: 'Resend 4K Availability Emails',
   opentautulli: 'Open in Tautulli',
   plays:
     '<strong>{playCount, number}</strong> {playCount, plural, one {play} other {plays}}',
@@ -164,46 +166,38 @@ const ManageSlideOver = ({
     }
   };
 
-  const isDefaultService = () => {
+  const isConfiguredService = () => {
     if (data.mediaInfo) {
       if (data.mediaInfo.mediaType === MediaType.MOVIE) {
         return (
-          radarrData?.find(
-            (radarr) =>
-              radarr.isDefault && radarr.id === data.mediaInfo?.serviceId
-          ) !== undefined
+          radarrData?.some(
+            (radarr) => radarr.id === data.mediaInfo?.serviceId
+          ) || radarrData?.some((radarr) => radarr.isDefault && !radarr.is4k)
         );
       } else {
         return (
-          sonarrData?.find(
-            (sonarr) =>
-              sonarr.isDefault && sonarr.id === data.mediaInfo?.serviceId
-          ) !== undefined
+          sonarrData?.some(
+            (sonarr) => sonarr.id === data.mediaInfo?.serviceId
+          ) || sonarrData?.some((sonarr) => sonarr.isDefault && !sonarr.is4k)
         );
       }
     }
     return false;
   };
 
-  const isDefault4kService = () => {
+  const isConfigured4kService = () => {
     if (data.mediaInfo) {
       if (data.mediaInfo.mediaType === MediaType.MOVIE) {
         return (
-          radarrData?.find(
-            (radarr) =>
-              radarr.isDefault &&
-              radarr.is4k &&
-              radarr.id === data.mediaInfo?.serviceId4k
-          ) !== undefined
+          radarrData?.some(
+            (radarr) => radarr.id === data.mediaInfo?.serviceId4k
+          ) || radarrData?.some((radarr) => radarr.isDefault && radarr.is4k)
         );
       } else {
         return (
-          sonarrData?.find(
-            (sonarr) =>
-              sonarr.isDefault &&
-              sonarr.is4k &&
-              sonarr.id === data.mediaInfo?.serviceId4k
-          ) !== undefined
+          sonarrData?.some(
+            (sonarr) => sonarr.id === data.mediaInfo?.serviceId4k
+          ) || sonarrData?.some((sonarr) => sonarr.isDefault && sonarr.is4k)
         );
       }
     }
@@ -478,7 +472,7 @@ const ManageSlideOver = ({
 
                 {hasPermission(Permission.ADMIN) &&
                   data?.mediaInfo?.serviceUrl &&
-                  isDefaultService() && (
+                  isConfiguredService() && (
                     <div>
                       <ConfirmButton
                         onClick={() => deleteMediaFile(false)}
@@ -637,7 +631,7 @@ const ManageSlideOver = ({
                         </span>
                       </Button>
                     </a>
-                    {isDefault4kService() && (
+                    {isConfigured4kService() && (
                       <div>
                         <ConfirmButton
                           onClick={() => deleteMediaFile(true)}
@@ -697,6 +691,18 @@ const ManageSlideOver = ({
                     </span>
                   </Button>
                 )}
+                {data?.mediaInfo.status === MediaStatus.AVAILABLE && (
+                  <Button
+                    onClick={() => markAvailable()}
+                    className="w-full"
+                    buttonType="primary"
+                  >
+                    <CheckCircleIcon />
+                    <span>
+                      {intl.formatMessage(messages.resendAvailabilityEmail)}
+                    </span>
+                  </Button>
+                )}
                 {data?.mediaInfo.status4k !== MediaStatus.AVAILABLE &&
                   settings.currentSettings.series4kEnabled && (
                     <Button
@@ -710,6 +716,21 @@ const ManageSlideOver = ({
                           mediaType === 'movie'
                             ? messages.mark4kavailable
                             : messages.markallseasons4kavailable
+                        )}
+                      </span>
+                    </Button>
+                  )}
+                {data?.mediaInfo.status4k === MediaStatus.AVAILABLE &&
+                  settings.currentSettings.series4kEnabled && (
+                    <Button
+                      onClick={() => markAvailable(true)}
+                      className="w-full"
+                      buttonType="primary"
+                    >
+                      <CheckCircleIcon />
+                      <span>
+                        {intl.formatMessage(
+                          messages.resendAvailabilityEmail4k
                         )}
                       </span>
                     </Button>

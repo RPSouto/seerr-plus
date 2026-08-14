@@ -4,6 +4,7 @@ import { MediaType } from '@server/constants/media';
 import Issue from '@server/entity/Issue';
 import notificationManager, { Notification } from '@server/lib/notifications';
 import { Permission } from '@server/lib/permissions';
+import { getMediaInterestedUsers } from '@server/lib/seerrplus/requests';
 import logger from '@server/logger';
 import { sortBy } from 'lodash';
 import type {
@@ -58,7 +59,7 @@ export class IssueSubscriber implements EntitySubscriberInterface<Issue> {
         }
       }
 
-      notificationManager.sendNotification(type, {
+      const payload = {
         event:
           type === Notification.ISSUE_CREATED
             ? `New ${
@@ -83,16 +84,52 @@ export class IssueSubscriber implements EntitySubscriberInterface<Issue> {
         media: entity.media,
         image,
         extra,
-        notifyAdmin: true,
-        notifySystem: true,
-        notifyUser:
-          !entity.createdBy.hasPermission(Permission.MANAGE_ISSUES) &&
-          entity.modifiedBy?.id !== entity.createdBy.id &&
-          (type === Notification.ISSUE_RESOLVED ||
-            type === Notification.ISSUE_REOPENED)
-            ? entity.createdBy
-            : undefined,
-      });
+      };
+
+      if (entity.issueType === IssueType.REMOVAL) {
+        const interestedUsers = await getMediaInterestedUsers(
+          entity.media.id,
+          entity.removalIs4k
+        );
+
+        notificationManager.sendNotification(type, {
+          ...payload,
+          notifyAdmin: true,
+          notifySystem: true,
+        });
+
+        interestedUsers
+          .filter((user) => !user.hasPermission(Permission.ADMIN))
+          .forEach((user) =>
+            notificationManager.sendNotification(type, {
+              ...payload,
+              notifyAdmin: false,
+              notifySystem: false,
+              notifyUser: user,
+            })
+          );
+
+        logger.info('Sent removal notification to eligible users', {
+          label: 'Seerr+',
+          issueId: entity.id,
+          mediaId: entity.media.id,
+          recipientCount: interestedUsers.length,
+          type: Notification[type],
+        });
+      } else {
+        notificationManager.sendNotification(type, {
+          ...payload,
+          notifyAdmin: true,
+          notifySystem: true,
+          notifyUser:
+            !entity.createdBy.hasPermission(Permission.MANAGE_ISSUES) &&
+            entity.modifiedBy?.id !== entity.createdBy.id &&
+            (type === Notification.ISSUE_RESOLVED ||
+              type === Notification.ISSUE_REOPENED)
+              ? entity.createdBy
+              : undefined,
+        });
+      }
     } catch (e) {
       logger.error('Something went wrong sending issue notification(s)', {
         label: 'Notifications',

@@ -27,6 +27,7 @@ import {
 } from 'typeorm';
 import Issue from './Issue';
 import { MediaRequest } from './MediaRequest';
+import MediaRequestParticipant from './MediaRequestParticipant';
 import SeasonRequest from './SeasonRequest';
 import { UserPushSubscription } from './UserPushSubscription';
 import { UserSettings } from './UserSettings';
@@ -118,6 +119,12 @@ export class User {
 
   @OneToMany(() => MediaRequest, (request) => request.requestedBy)
   public requests: MediaRequest[];
+
+  @OneToMany(
+    () => MediaRequestParticipant,
+    (participant) => participant.user
+  )
+  public requestParticipations: MediaRequestParticipant[];
 
   @OneToMany(() => Watchlist, (watchlist) => watchlist.requestedBy)
   public watchlists: Watchlist[];
