@@ -20,6 +20,7 @@ type Candidate = {
   votes: number;
   weeklySuggestions?: number;
   suggestedByMe?: boolean;
+  interestedUserCount: number;
   interestedUsers: { id: number; displayName: string }[];
 };
 type Session = {
@@ -169,11 +170,13 @@ export const MovieClubHighlight = () => {
 const CandidateCard = ({
   candidate,
   selected,
+  revealRequesters = false,
   onSelect,
   disabled,
 }: {
   candidate: Candidate;
   selected?: boolean;
+  revealRequesters?: boolean;
   onSelect?: () => void;
   disabled?: boolean;
 }) => {
@@ -205,10 +208,13 @@ const CandidateCard = ({
           {candidate.overview || intl.formatMessage(messages.noSynopsis)}
         </p>
         <p className="mt-2 text-xs text-gray-400">
-          {intl.formatMessage(messages.interested)}:{' '}
-          {candidate.interestedUsers
-            .map((user) => user.displayName)
-            .join(', ') || '—'}{' '}
+          {revealRequesters && candidate.interestedUsers.length
+            ? `${intl.formatMessage(messages.interested)}: ${candidate.interestedUsers
+                .map((user) => user.displayName)
+                .join(', ')}`
+            : intl.formatMessage(messages.interestedCount, {
+                count: candidate.interestedUserCount,
+              })}{' '}
           · {intl.formatMessage(messages.votes, { count: candidate.votes })}
         </p>
         {onSelect && (
@@ -458,7 +464,7 @@ const MovieClub = () => {
             <span className="min-w-0 flex-1">{candidate.title}</span>
             <span className="text-xs text-gray-400">
               {intl.formatMessage(messages.interestedCount, {
-                count: candidate.interestedUsers.length,
+                count: candidate.interestedUserCount,
               })}
               {' · '}
               {intl.formatMessage(messages.weeklySuggestions, {
@@ -730,6 +736,10 @@ const MovieClub = () => {
                     candidate.id === session.selectedCandidateId ||
                     candidate.id === session.myVoteCandidateId
                   }
+                  revealRequesters={
+                    session.status === 1 &&
+                    candidate.id === session.selectedCandidateId
+                  }
                   disabled={session.status !== 0}
                   onSelect={
                     session.status === 0 ? () => vote(candidate.id) : undefined
@@ -773,6 +783,7 @@ const MovieClub = () => {
                   key={historicSession.id}
                   candidate={winner}
                   selected
+                  revealRequesters
                 />
               ) : null;
             })}

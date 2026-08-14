@@ -14,7 +14,7 @@ Seerr Plus Edition is an independent fork of
 keeps Seerr's acquisition workflow while adding collaboration around requests,
 availability, library cleanup, and choosing a Film of the Week.
 
-The current release is **seerr-plus-v1.6.0**, based on **Seerr v3.4.1**.
+The current release is **seerr-plus-v1.6.2**, based on **Seerr v3.4.1**.
 
 ## What Plus Edition adds
 
@@ -67,6 +67,8 @@ The current release is **seerr-plus-v1.6.0**, based on **Seerr v3.4.1**.
 - The voting deadline can use the one-week preset or a custom date and time.
 - Scheduled votes remain private and editable until they open automatically.
 - Each user has one vote and can change it while voting is open.
+- Requester identities remain hidden during candidate preparation and voting;
+  only anonymous interest counts are shown.
 - Administrators can edit or delete a session in any state and start again when
   necessary.
 - The result identifies the Film of the Week and the users who originally
@@ -120,8 +122,8 @@ Build the image from the Seerr+ source checkout:
 cd ~/Docker/Seerr-Plus
 
 sudo docker build --no-cache \
-  --build-arg COMMIT_TAG=seerr-plus-v1.6.0 \
-  -t local/seerr-plus:1.6.0 \
+  --build-arg COMMIT_TAG=seerr-plus-v1.6.2 \
+  -t local/seerr-plus:1.6.2 \
   -t local/seerr-plus:3.4.1 .
 
 cd ~/Docker/Seerr-Plus-Deploy
@@ -146,7 +148,7 @@ and annotated Git tags use the same name.
 To publish the current checkout to the private Seerr+ remote:
 
 ```bash
-bash scripts/seerr-plus-release.sh seerr-plus-v1.6.0
+bash scripts/seerr-plus-release.sh seerr-plus-v1.6.2
 ```
 
 ## Upstream and license

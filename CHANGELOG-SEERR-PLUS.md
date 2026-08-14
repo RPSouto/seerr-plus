@@ -1,5 +1,18 @@
 # Seerr+ changelog
 
+## seerr-plus-v1.6.2
+
+- Hide requester and interested-user identities while Movie Club candidates are being prepared or voted on.
+- Return only anonymous interest counts from the eligible-candidate API.
+- Reveal requester names only for the selected Film of the Week, its winner announcement, and Movie Club history.
+- Keep winner emails identifying the users who requested or joined the winning film.
+
+## seerr-plus-v1.6.1
+
+- Add Movie Club to the compact mobile navigation menu.
+- Use matching outline and selected trophy icons on mobile.
+- Keep the mobile active-route indication consistent with the desktop sidebar.
+
 ## seerr-plus-v1.6.0
 
 - Add an explicit absolute Movie Club link to assignment, voting and result emails.

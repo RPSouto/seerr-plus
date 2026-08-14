@@ -39,6 +39,12 @@ weekly suggestion count, followed by the films with the most interested users.
 Candidates already selected in an edited session remain visible inside that
 top-ten limit.
 
+Candidate preparation and active voting are anonymous. The API returns only
+the number of interested users and does not expose their identities for any
+candidate. Requester names are revealed only for the selected Film of the Week,
+in its winner announcement and in Movie Club history. This keeps the vote
+focused on the films instead of the users who requested them.
+
 When the deadline passes, a unique leader becomes Film of the Week. In a tie,
 all votes are cleared, the lowest-ranked candidate is removed (community
 interest is used as a deterministic tie-break), and the deadline is extended by

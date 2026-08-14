@@ -115,15 +115,21 @@ const serializeSession = async (
   language?: string
 ) => {
   const candidates = await Promise.all(
-    (session.candidates ?? []).map(async (candidate) => ({
-      id: candidate.id,
-      ...(await movieDetails(candidate.media, language)),
-      votes: (candidate.votes ?? []).length,
-    }))
+    (session.candidates ?? []).map(async (candidate) => {
+      const details = await movieDetails(candidate.media, language);
+      const isWinner = session.selectedMedia?.id === candidate.media.id;
+      return {
+        id: candidate.id,
+        ...details,
+        interestedUserCount: details.interestedUsers.length,
+        interestedUsers: isWinner ? details.interestedUsers : [],
+        votes: (candidate.votes ?? []).length,
+      };
+    })
   );
   candidates.sort(
     (a, b) =>
-      b.interestedUsers.length - a.interestedUsers.length ||
+      b.interestedUserCount - a.interestedUserCount ||
       a.title.localeCompare(b.title)
   );
   return {
@@ -221,7 +227,14 @@ movieClubRoutes.get('/eligible', async (req, res, next) => {
       ...selected,
       ...ranked.filter((item) => !selectedMediaIds.has(item.mediaId)),
     ].slice(0, 10);
-    return res.json({ results: top, weekKey: getMovieClubWeekKey() });
+    return res.json({
+      results: top.map((item) => ({
+        ...item,
+        interestedUserCount: item.interestedUsers.length,
+        interestedUsers: [],
+      })),
+      weekKey: getMovieClubWeekKey(),
+    });
   } catch (error) {
     return next({ status: 500, message: error instanceof Error ? error.message : String(error) });
   }
