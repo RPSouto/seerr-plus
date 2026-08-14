@@ -1,5 +1,11 @@
 # Seerr+ changelog
 
+## seerr-plus-v1.0.2
+
+- Align the desktop action toolbar with the title instead of centering it below the poster.
+- Keep primary action buttons on the left and the interested-user panel on the right when space permits.
+- Preserve the existing responsive mobile layout.
+
 ## seerr-plus-v1.0.1
 
 - Prevent long movie and series names from being compressed into a narrow column by large action/interest controls.

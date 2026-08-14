@@ -214,7 +214,7 @@
   }
 
   .media-actions {
-    @apply relative mt-4 flex w-full min-w-0 flex-wrap items-center justify-center gap-y-3 sm:justify-end xl:mt-4 2xl:mt-0 2xl:w-[55%] 2xl:justify-end;
+    @apply relative mt-4 flex w-full min-w-0 flex-wrap items-center justify-center gap-y-3 sm:justify-end xl:ml-auto xl:w-[calc(100%-14rem)] xl:justify-start;
   }
 
   .media-actions > * {
