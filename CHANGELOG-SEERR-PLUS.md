@@ -1,5 +1,33 @@
 # Seerr+ changelog
 
+## seerr-plus-v1.8.5
+
+- Move the Plus Edition badge to the login footer so it never overlaps the Seerr logo.
+- Keep the badge visible and centered across desktop and mobile login layouts.
+- Enforce release patch numbers that are multiples of 5 in the publishing script and documentation.
+
+## seerr-plus-v1.8.1
+
+- Replace the inline Manage Movie participant list with a compact expandable management panel.
+- Keep large participant lists readable with vertical rows, truncation, and a bounded scroll area.
+- Show only the first three interested users on movie pages, followed by an “and N more” control.
+- Allow users to expand the complete list and collapse it again on demand.
+
+## seerr-plus-v1.8.0
+
+- Display the Plus Edition badge on the login page.
+- Add the Movie Club preference to each user's Discord, Pushbullet, and Pushover notification settings.
+- Deliver Movie Club alerts to opted-in personal Pushbullet and Pushover accounts.
+- Publish Movie Club alerts to the configured Discord channel and mention opted-in users.
+- Link Discord and Pushover Movie Club notifications directly to the voting page.
+
+## seerr-plus-v1.7.0
+
+- Add a per-user Movie Club email preference under Profile, Settings, Notifications, Email.
+- Apply the preference to responsible-user assignments, voting announcements, tie-breaks, and winner emails.
+- Enable Movie Club email for existing users during migration to preserve the previous delivery behavior.
+- Simplify interested-user lists in Manage Movie by showing only the users icon and participant list.
+
 ## seerr-plus-v1.6.2
 
 - Hide requester and interested-user identities while Movie Club candidates are being prepared or voted on.

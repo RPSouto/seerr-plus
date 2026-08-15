@@ -196,11 +196,13 @@ class DiscordAgent
     }
 
     const url = applicationUrl
-      ? payload.issue
-        ? `${applicationUrl}/issues/${payload.issue.id}`
-        : payload.media
-          ? `${applicationUrl}/${payload.media.mediaType}/${payload.media.tmdbId}`
-          : undefined
+      ? type === Notification.MOVIE_CLUB
+        ? `${applicationUrl}/movie-club`
+        : payload.issue
+          ? `${applicationUrl}/issues/${payload.issue.id}`
+          : payload.media
+            ? `${applicationUrl}/${payload.media.mediaType}/${payload.media.tmdbId}`
+            : undefined
       : undefined;
 
     return {
@@ -253,6 +255,30 @@ class DiscordAgent
 
     try {
       if (settings.options.enableMentions) {
+        if (
+          type === Notification.MOVIE_CLUB &&
+          !payload.notifyUser &&
+          !payload.notifyAdmin
+        ) {
+          const users =
+            payload.notifyUsers ?? (await getRepository(User).find());
+          userMentions.push(
+            ...users
+              .filter(
+                (user) =>
+                  user.settings?.hasNotificationType(
+                    NotificationAgentKey.DISCORD,
+                    type
+                  ) && user.settings.discordIds?.length
+              )
+              .flatMap((user) =>
+                user
+                  .settings!.discordIds.filter((id) => isValidSnowflake(id))
+                  .map((id) => `<@${id}>`)
+              )
+          );
+        }
+
         if (payload.notifyUser) {
           if (
             payload.notifyUser.settings?.hasNotificationType(

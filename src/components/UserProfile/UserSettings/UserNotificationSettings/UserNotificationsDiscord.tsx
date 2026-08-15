@@ -215,6 +215,7 @@ const UserNotificationsDiscord = () => {
             </div>
             <NotificationTypeSelector
               user={user}
+              includeMovieClub
               enabledTypes={data?.discordEnabledTypes ?? 0}
               currentTypes={values.types}
               onUpdate={(newTypes) => {

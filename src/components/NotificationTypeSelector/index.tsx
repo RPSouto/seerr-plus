@@ -64,6 +64,9 @@ const messages = defineMessages('components.NotificationTypeSelector', {
   mediaautorequested: 'Request Automatically Submitted',
   mediaautorequestedDescription:
     'Get notified when new media requests are automatically submitted for items on Your Watchlist.',
+  movieclub: 'Movie Club',
+  movieclubDescription:
+    'Get notified when you are assigned to manage a vote, when voting opens, and when Movie Club results are available.',
 });
 
 export const hasNotificationType = (
@@ -106,6 +109,7 @@ export enum Notification {
   ISSUE_RESOLVED = 1024,
   ISSUE_REOPENED = 2048,
   MEDIA_AUTO_REQUESTED = 4096,
+  MOVIE_CLUB = 8192,
 }
 
 export const ALL_NOTIFICATIONS = Object.values(Notification)
@@ -125,6 +129,7 @@ export interface NotificationItem {
 interface NotificationTypeSelectorProps {
   user?: User;
   enabledTypes?: number;
+  includeMovieClub?: boolean;
   currentTypes: number;
   onUpdate: (newTypes: number) => void;
   error?: string;
@@ -133,6 +138,7 @@ interface NotificationTypeSelectorProps {
 const NotificationTypeSelector = ({
   user,
   enabledTypes = ALL_NOTIFICATIONS,
+  includeMovieClub = false,
   currentTypes,
   onUpdate,
   error,
@@ -275,6 +281,14 @@ const NotificationTypeSelector = ({
         hasNotifyUser: true,
       },
       {
+        id: 'movie-club',
+        name: intl.formatMessage(messages.movieclub),
+        description: intl.formatMessage(messages.movieclubDescription),
+        value: Notification.MOVIE_CLUB,
+        hasNotifyUser: true,
+        hidden: !includeMovieClub,
+      },
+      {
         id: 'media-failed',
         name: intl.formatMessage(messages.mediafailed),
         description: intl.formatMessage(
@@ -369,7 +383,15 @@ const NotificationTypeSelector = ({
     return user
       ? sortBy(filteredTypes, 'hasNotifyUser', 'DESC')
       : filteredTypes;
-  }, [user, hasPermission, settings, intl, allowedTypes, enabledTypes]);
+  }, [
+    user,
+    hasPermission,
+    settings,
+    intl,
+    allowedTypes,
+    enabledTypes,
+    includeMovieClub,
+  ]);
 
   if (!availableTypes.length) {
     return null;

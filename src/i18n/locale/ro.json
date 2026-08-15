@@ -1,4 +1,10 @@
 {
+  "components.SeerrPlus.RequestInterestUsers.andmore": "and {count} more",
+  "components.SeerrPlus.RequestInterestUsers.showless": "Show less",
+  "components.SeerrPlus.RequestParticipants.interestedusercount": "{count} interested users",
+  "components.SeerrPlus.RequestParticipants.manageinterestedusers": "Manage interested users ({count})",
+  "components.NotificationTypeSelector.movieclub": "Movie Club",
+  "components.NotificationTypeSelector.movieclubDescription": "Get notified when you are assigned to manage a vote, when voting opens, and when Movie Club results are available.",
   "component.BlocklistBlock.blocklistdate": "Data blocării",
   "component.BlocklistBlock.blocklistedby": "Blocat de",
   "component.BlocklistModal.blocklisting": "În curs de blocare",

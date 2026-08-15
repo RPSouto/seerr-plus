@@ -3,6 +3,7 @@ import { useUser } from '@app/hooks/useUser';
 import defineMessages from '@app/utils/defineMessages';
 import { UsersIcon } from '@heroicons/react/24/solid';
 import Link from 'next/link';
+import { useState } from 'react';
 import { useIntl } from 'react-intl';
 import useSWR from 'swr';
 
@@ -18,11 +19,14 @@ type RequestParticipantsResponse = {
 
 const messages = defineMessages('components.SeerrPlus.RequestInterestUsers', {
   interested: 'Interested',
+  andmore: 'and {count} more',
+  showless: 'Show less',
 });
 
 const RequestInterestUsers = ({ requestId }: { requestId?: number }) => {
   const intl = useIntl();
   const { user: currentUser } = useUser();
+  const [isExpanded, setIsExpanded] = useState(false);
   const { data } = useSWR<RequestParticipantsResponse>(
     requestId ? `/api/v1/seerrplus/requests/${requestId}/users` : null
   );
@@ -31,6 +35,9 @@ const RequestInterestUsers = ({ requestId }: { requestId?: number }) => {
     return null;
   }
 
+  const visibleUsers = isExpanded ? data.users : data.users.slice(0, 3);
+  const remainingUsers = data.users.length - visibleUsers.length;
+
   return (
     <div className="ml-3 flex min-w-0 max-w-full flex-wrap items-center gap-2 rounded-md bg-gray-800/80 px-3 py-2 text-sm ring-1 ring-gray-700 xl:ml-3">
       <span className="flex items-center font-medium text-gray-300">
@@ -38,7 +45,7 @@ const RequestInterestUsers = ({ requestId }: { requestId?: number }) => {
         {intl.formatMessage(messages.interested)}:
       </span>
       <span className="flex flex-wrap items-center gap-2">
-        {data.users.map((interestUser) => (
+        {visibleUsers.map((interestUser) => (
           <Link
             key={interestUser.id}
             href={
@@ -62,6 +69,24 @@ const RequestInterestUsers = ({ requestId }: { requestId?: number }) => {
             {interestUser.displayName}
           </Link>
         ))}
+        {remainingUsers > 0 && (
+          <button
+            type="button"
+            className="whitespace-nowrap font-semibold text-amber-300 transition hover:text-amber-200 hover:underline"
+            onClick={() => setIsExpanded(true)}
+          >
+            {intl.formatMessage(messages.andmore, { count: remainingUsers })}
+          </button>
+        )}
+        {isExpanded && data.users.length > 3 && (
+          <button
+            type="button"
+            className="whitespace-nowrap text-gray-400 transition hover:text-white hover:underline"
+            onClick={() => setIsExpanded(false)}
+          >
+            {intl.formatMessage(messages.showless)}
+          </button>
+        )}
       </span>
     </div>
   );

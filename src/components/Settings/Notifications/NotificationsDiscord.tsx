@@ -379,6 +379,7 @@ const NotificationsDiscord = () => {
               </div>
             )}
             <NotificationTypeSelector
+              includeMovieClub
               currentTypes={values.enabled ? values.types : 0}
               onUpdate={(newTypes) => {
                 setFieldValue('types', newTypes);
