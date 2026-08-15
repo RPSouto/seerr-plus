@@ -187,7 +187,7 @@
   }
 
   .media-status {
-    @apply mb-2 space-x-2;
+    @apply mb-2 flex flex-wrap items-center justify-center gap-2 xl:justify-start;
   }
 
   .media-title {

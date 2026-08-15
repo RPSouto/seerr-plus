@@ -298,6 +298,42 @@ movieClubRoutes.get('/history', async (req, res, next) => {
   }
 });
 
+movieClubRoutes.get('/winners/:mediaId', async (req, res, next) => {
+  try {
+    const mediaId = Number(req.params.mediaId);
+    if (!Number.isInteger(mediaId)) {
+      return next({ status: 400, message: 'Invalid media id.' });
+    }
+
+    const repository = getRepository(MovieClubSession);
+    const count = await repository
+      .createQueryBuilder('session')
+      .leftJoin('session.selectedMedia', 'selectedMedia')
+      .where('selectedMedia.id = :mediaId', { mediaId })
+      .getCount();
+    const latest = count
+      ? await repository
+          .createQueryBuilder('session')
+          .leftJoin('session.selectedMedia', 'selectedMedia')
+          .where('selectedMedia.id = :mediaId', { mediaId })
+          .orderBy('session.createdAt', 'DESC')
+          .getOne()
+      : null;
+
+    return res.json({
+      winner: count > 0,
+      count,
+      lastWonAt: latest?.createdAt ?? null,
+      sessionId: latest?.id ?? null,
+    });
+  } catch (error) {
+    return next({
+      status: 500,
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
 movieClubRoutes.get('/suggestions/:mediaId', async (req, res, next) => {
   try {
     if (!req.user) return next({ status: 401, message: 'Authentication required.' });

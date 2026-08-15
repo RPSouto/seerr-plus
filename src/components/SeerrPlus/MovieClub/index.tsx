@@ -64,6 +64,7 @@ const messages = defineMessages('components.SeerrPlus.MovieClub', {
   createHelp:
     'Choose between two and four movies from existing user requests that are already available in Plex. Movies with the most interested users appear first.',
   interestedCount: '{count} interested',
+  candidateStats: '{interested} int. · {suggestions} sug.',
   whatsappPlaceholder: 'WhatsApp discussion link (optional)',
   startVoting: 'Start voting',
   noActiveVote:
@@ -374,7 +375,7 @@ const MovieClub = () => {
       `/api/v1/seerrplus/movie-club/sessions/${session.id}/select`,
       { candidateId }
     );
-    await mutate();
+    await Promise.all([mutate(), mutateHistory()]);
   };
 
   const resolveVote = async () => {
@@ -445,9 +446,10 @@ const MovieClub = () => {
         {eligible?.results.map((candidate) => (
           <label
             key={candidate.mediaId}
-            className="flex cursor-pointer items-center gap-3 rounded border border-gray-700 p-3 text-white"
+            className="flex cursor-pointer items-start gap-3 rounded border border-gray-700 p-3 text-white"
           >
             <input
+              className="mt-1 shrink-0"
               type="checkbox"
               checked={selected.includes(candidate.mediaId)}
               disabled={
@@ -461,15 +463,16 @@ const MovieClub = () => {
                 )
               }
             />
-            <span className="min-w-0 flex-1">{candidate.title}</span>
-            <span className="text-xs text-gray-400">
-              {intl.formatMessage(messages.interestedCount, {
-                count: candidate.interestedUserCount,
-              })}
-              {' · '}
-              {intl.formatMessage(messages.weeklySuggestions, {
-                count: candidate.weeklySuggestions ?? 0,
-              })}
+            <span className="min-w-0 flex-1">
+              <span className="block truncate font-semibold leading-tight">
+                {candidate.title}
+              </span>
+              <span className="mt-1 block text-xs text-gray-400">
+                {intl.formatMessage(messages.candidateStats, {
+                  interested: candidate.interestedUserCount,
+                  suggestions: candidate.weeklySuggestions ?? 0,
+                })}
+              </span>
             </span>
           </label>
         ))}
@@ -785,7 +788,14 @@ const MovieClub = () => {
                   selected
                   revealRequesters
                 />
-              ) : null;
+              ) : (
+                <div
+                  key={historicSession.id}
+                  className="rounded-lg border border-gray-700 bg-gray-800/60 p-4 text-gray-400"
+                >
+                  {intl.formatMessage(messages.noHistory)}
+                </div>
+              );
             })}
           </div>
         ) : (

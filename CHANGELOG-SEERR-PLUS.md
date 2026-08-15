@@ -1,5 +1,49 @@
 # Seerr+ changelog
 
+## seerr-plus-v1.8.90
+
+- Fix the primary Movie Club email action button.
+- Send the main email button to `/movie-club` instead of the first candidate movie page.
+- Keep individual movie cards linked to their own movie detail pages for synopsis and metadata.
+
+## seerr-plus-v1.8.85
+
+- Optimise the Movie Club candidate picker for mobile testing.
+- Move candidate stats onto their own compact line to prevent overlap with long movie titles.
+- Shorten candidate metrics to `int.` and `sug.` while preserving full voting behaviour.
+- Truncate long titles inside the selection cards so the mobile layout remains stable.
+
+## seerr-plus-v1.8.80
+
+- Align media status badges using a flex container instead of inline spacing.
+- Fix the Movie Club trophy badge sitting slightly off-line next to the native `Available` badge.
+- Keep the compact trophy + `Movie Club` presentation from v1.8.75.
+
+## seerr-plus-v1.8.75
+
+- Simplify the movie detail Movie Club winner badge to show only the trophy icon and `Movie Club`.
+- Remove the win count from the badge; winning once is enough to earn the marker.
+- Align the badge with the existing Seerr status badges by reusing the shared Badge component.
+
+## seerr-plus-v1.8.70
+
+- Declare the Movie Club winner-status endpoint in the Seerr OpenAPI schema.
+- Allow `/api/v1/seerrplus/movie-club/winners/:mediaId` to pass API validation and reach the Express route.
+- Fix the movie detail winner badge returning HTTP 404 even when the backend route exists.
+
+## seerr-plus-v1.8.65
+
+- Add a Movie Club winner marker to movie detail pages.
+- Expose a read-only Movie Club winner status endpoint for a movie media record.
+- Show a gold trophy badge when a movie has won at least one Movie Club vote, including the number of wins.
+- Keep the marker movie-only and independent from the normal Seerr media/request status badges.
+
+## seerr-plus-v1.8.60
+
+- Refresh the Movie Club history immediately after an administrator manually selects the Film of the Week.
+- Prevent the Recent Movie Club films section from staying on stale “no winners” data after a winner is selected.
+- Add a defensive fallback for rare historic sessions that are returned without a matching winner candidate.
+
 ## seerr-plus-v1.8.55
 
 - Localize core Seerr email subjects with the same Seerr+ language rule used by the message body.

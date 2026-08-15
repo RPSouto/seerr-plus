@@ -89,8 +89,7 @@ export const sendMovieClubEmail = async (
       ? `${applicationUrl}/movie-club`
       : undefined;
     const highlightMovie = options.highlightMovie ?? options.movies?.[0];
-    const actionUrl =
-      movieUrl(applicationUrl, highlightMovie?.tmdbId) ?? movieClubUrl;
+    const actionUrl = movieClubUrl;
     const movies =
       options.movies?.map((movie) => ({
         ...movie,

@@ -6,6 +6,7 @@ import ImdbLogo from '@app/assets/services/imdb.svg';
 import Spinner from '@app/assets/spinner.svg';
 import TmdbLogo from '@app/assets/tmdb_logo.svg';
 import BlocklistModal from '@app/components/BlocklistModal';
+import Badge from '@app/components/Common/Badge';
 import Button from '@app/components/Common/Button';
 import CachedImage from '@app/components/Common/CachedImage';
 import LoadingSpinner from '@app/components/Common/LoadingSpinner';
@@ -46,6 +47,7 @@ import {
   PlayIcon,
   StarIcon,
   TicketIcon,
+  TrophyIcon,
 } from '@heroicons/react/24/outline';
 import {
   ChevronDoubleDownIcon,
@@ -113,11 +115,19 @@ const messages = defineMessages('components.MovieDetails', {
   watchlistError: 'Something went wrong. Please try again.',
   removefromwatchlist: 'Remove From Watchlist',
   addtowatchlist: 'Add To Watchlist',
+  movieClubWinner: 'Movie Club',
 });
 
 interface MovieDetailsProps {
   movie?: MovieDetailsType;
 }
+
+type MovieClubWinnerStatus = {
+  winner: boolean;
+  count: number;
+  lastWonAt?: string | null;
+  sessionId?: number | null;
+};
 
 const MovieDetails = ({ movie }: MovieDetailsProps) => {
   const settings = useSettings();
@@ -155,6 +165,11 @@ const MovieDetails = ({ movie }: MovieDetailsProps) => {
 
   const { data: ratingData } = useSWR<RatingResponse>(
     `/api/v1/movie/${router.query.movieId}/ratingscombined`
+  );
+  const { data: movieClubWinnerStatus } = useSWR<MovieClubWinnerStatus>(
+    data?.mediaInfo?.id
+      ? `/api/v1/seerrplus/movie-club/winners/${data.mediaInfo.id}`
+      : null
   );
 
   const sortedCrew = useMemo(
@@ -550,6 +565,15 @@ const MovieDetails = ({ movie }: MovieDetailsProps) => {
                   serviceUrl={data.mediaInfo?.serviceUrl4k}
                 />
               )}
+            {movieClubWinnerStatus?.winner && (
+              <Badge
+                badgeType="warning"
+                className="items-center gap-1 !border-amber-500 !bg-amber-500/20 !text-amber-100"
+              >
+                <TrophyIcon className="h-3.5 w-3.5 text-amber-200" />
+                <span>{intl.formatMessage(messages.movieClubWinner)}</span>
+              </Badge>
+            )}
           </div>
           <h1 data-testid="media-title">
             {data.title}{' '}
