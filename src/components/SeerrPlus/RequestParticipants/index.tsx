@@ -27,25 +27,30 @@ type ParticipantsResponse = {
   users: ParticipantUser[];
 };
 
-const messages = defineMessages('components.SeerrPlus.RequestParticipants', {
-  interestedusers: 'Interested Users',
-  nointerestedusers:
-    'No interested users remain. This request can now be deleted.',
-  removeinterest: 'Remove Interest',
-  removeinterestconfirm: "Remove this user's interest from the request?",
-  removefailed: 'Unable to remove this user from the request.',
-  manageinterestedusers: 'Manage interested users ({count})',
-  interestedusercount: '{count} interested users',
-});
+export const messages = defineMessages(
+  'components.SeerrPlus.RequestParticipants',
+  {
+    interestedusers: 'Interested Users',
+    nointerestedusers:
+      'No interested users remain. This request can now be deleted.',
+    removeinterest: 'Remove Interest',
+    removeinterestconfirm: "Remove this user's interest from the request?",
+    removefailed: 'Unable to remove this user from the request.',
+    manageinterestedusers: 'Manage interested users ({count})',
+    interestedusercount: '{count} interested users',
+  }
+);
 
 type RequestParticipantsProps = {
   requestId: number;
   onParticipantCountChange?: (count: number) => void;
+  displayMode?: 'default' | 'countOnly';
 };
 
 const RequestParticipants = ({
   requestId,
   onParticipantCountChange,
+  displayMode = 'default',
 }: RequestParticipantsProps) => {
   const intl = useIntl();
   const { user: currentUser, hasPermission } = useUser();
@@ -92,16 +97,20 @@ const RequestParticipants = ({
     return null;
   }
 
+  if (displayMode === 'countOnly') {
+    return null;
+  }
+
   if (users.length === 0) {
     return (
-      <div className="mt-2 rounded-md border border-amber-500/50 bg-amber-900/30 px-3 py-2 text-sm font-medium text-amber-200">
+      <div className="rounded-md border border-amber-500/50 bg-amber-900/30 px-3 py-2 text-sm font-medium text-amber-200">
         {intl.formatMessage(messages.nointerestedusers)}
       </div>
     );
   }
 
   return (
-    <div className="mt-2 text-sm">
+    <div className="text-sm">
       <button
         type="button"
         className="flex w-full items-center rounded-md border border-gray-600 bg-gray-800/70 px-3 py-2 text-left font-medium text-gray-200 transition hover:border-gray-500 hover:bg-gray-700/80"

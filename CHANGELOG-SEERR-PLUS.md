@@ -1,5 +1,12 @@
 # Seerr+ changelog
 
+## seerr-plus-v1.8.10
+
+- Move interested-user management out of the request-owner row in Manage Movie.
+- Add a dedicated full-width Interested Users section between Requests and Media.
+- Preserve the expandable, scrollable participant list and all interest-removal controls.
+- Keep request deletion eligibility synchronized without rendering duplicate participant controls.
+
 ## seerr-plus-v1.8.5
 
 - Move the Plus Edition badge to the login footer so it never overlaps the Seerr logo.

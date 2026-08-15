@@ -1,6 +1,6 @@
-# Seerr+ v1.8.5
+# Seerr+ v1.8.10
 
-Current release identifier: `seerr-plus-v1.8.5`.
+Current release identifier: `seerr-plus-v1.8.10`.
 
 See [FEATURES.md](./FEATURES.md) for the complete feature set and
 [PRIVATE_GIT.md](./PRIVATE_GIT.md) for the one-command private release flow.

@@ -14,7 +14,7 @@ Seerr Plus Edition is an independent fork of
 keeps Seerr's acquisition workflow while adding collaboration around requests,
 availability, library cleanup, and choosing a Film of the Week.
 
-The current release is **seerr-plus-v1.8.5**, based on **Seerr v3.4.1**.
+The current release is **seerr-plus-v1.8.10**, based on **Seerr v3.4.1**.
 
 ## What Plus Edition adds
 
@@ -127,8 +127,8 @@ Build the image from the Seerr+ source checkout:
 cd ~/Docker/Seerr-Plus
 
 sudo docker build --no-cache \
-  --build-arg COMMIT_TAG=seerr-plus-v1.8.5 \
-  -t local/seerr-plus:1.8.5 \
+  --build-arg COMMIT_TAG=seerr-plus-v1.8.10 \
+  -t local/seerr-plus:1.8.10 \
   -t local/seerr-plus:3.4.1 .
 
 cd ~/Docker/Seerr-Plus-Deploy
@@ -155,7 +155,7 @@ enforces this convention.
 To publish the current checkout to the private Seerr+ remote:
 
 ```bash
-bash scripts/seerr-plus-release.sh seerr-plus-v1.8.5
+bash scripts/seerr-plus-release.sh seerr-plus-v1.8.10
 ```
 
 ## Upstream and license

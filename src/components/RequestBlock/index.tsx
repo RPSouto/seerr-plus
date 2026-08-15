@@ -129,6 +129,7 @@ const RequestBlock = ({ request, onUpdate }: RequestBlockProps) => {
             <RequestParticipants
               requestId={request.id}
               onParticipantCountChange={setParticipantCount}
+              displayMode="countOnly"
             />
             {request.modifiedBy && (
               <div className="flex flex-nowrap">
