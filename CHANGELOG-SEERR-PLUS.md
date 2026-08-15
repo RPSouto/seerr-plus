@@ -1,5 +1,36 @@
 # Seerr+ changelog
 
+## seerr-plus-v1.8.55
+
+- Localize core Seerr email subjects with the same Seerr+ language rule used by the message body.
+- Send Portuguese subjects for users whose selected locale starts with `pt`; keep English as fallback for every other locale.
+- Cover request lifecycle subjects, issue subjects, test notifications, password-reset subjects, and generated-account subjects.
+- Keep the upstream email subject templates unchanged while passing already-localized event labels into them.
+
+## seerr-plus-v1.8.50
+
+- Extend the Portuguese/English email rule to the core Seerr email templates, not only Movie Club.
+- Send Media Available email copy in PT Portugal for users whose selected locale starts with `pt`, with English as fallback.
+- Localize common template labels such as greeting, Requested By, Open, Open in, View Issue, reset-password actions, account-information subjects, and generated-password copy.
+- Keep request/issue/test/password/generated-password templates rendering through one shared PT/EN labels helper.
+- Preserve upstream translation catalogs while adding the Seerr+ PT Portugal fallback needed for Plus Edition deployments.
+
+## seerr-plus-v1.8.45
+
+- Send Movie Club emails in Portuguese when a user's selected locale starts with `pt`.
+- Keep English as the fallback for every other locale and for users without a selected locale.
+- Localize Movie Club email subjects, body text, action buttons, section labels, film metadata labels, synopsis links, and footer text.
+- Apply the same Portuguese/English rule to email, Pushbullet, and Pushover direct Movie Club notifications; Discord keeps the shared English channel message.
+- Avoid the full Seerr translation catalog for this step, keeping Seerr+ notification delivery simple and predictable.
+
+## seerr-plus-v1.8.40
+
+- Add a dedicated Plus Edition Movie Club email template.
+- Include movie cards with poster artwork, release date, synopsis, vote count, requester names where appropriate, and direct Seerr+ movie links.
+- Improve responsible-user, voting-open, winner, scheduled-vote, and tie-break Movie Club email copy.
+- Keep Discord, Pushbullet, and Pushover Movie Club notifications on the existing compact text format with the Movie Club link.
+- Improve Media Available email copy so users are directed to open the title page for the synopsis, details, and playback context.
+
 ## seerr-plus-v1.8.35
 
 - Extend the shared-interest controls to series without creating duplicate Sonarr acquisitions.

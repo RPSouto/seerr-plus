@@ -14,7 +14,7 @@ Seerr Plus Edition is an independent fork of
 keeps Seerr's acquisition workflow while adding collaboration around requests,
 availability, library cleanup, and choosing a Film of the Week.
 
-The current release is **seerr-plus-v1.8.35**, based on **Seerr v3.4.1**.
+The current release is **seerr-plus-v1.8.50**, based on **Seerr v3.4.1**.
 
 ## What Plus Edition adds
 
@@ -84,6 +84,13 @@ The current release is **seerr-plus-v1.8.35**, based on **Seerr v3.4.1**.
   link for the discussion.
 - Assignment, voting, result, and tie-break emails contain a direct link to the
   Movie Club page.
+- Movie Club emails include poster artwork, release dates, synopses, vote
+  counts, and direct links to each film page when the public application URL is
+  configured.
+- Movie Club email content is sent in Portuguese for users whose selected
+  locale starts with `pt`; all other users receive English.
+- Core Seerr email templates follow the same rule for common labels and Media
+  Available copy, using PT Portugal for `pt*` locales and English as fallback.
 - Each user can enable or disable Movie Club alerts in their personal Email,
   Discord, Pushbullet, and Pushover notification settings.
 - The Discover banner appears only when a vote is active or a Film of the Week
@@ -140,8 +147,8 @@ Build the image from the Seerr+ source checkout:
 cd ~/Docker/Seerr-Plus
 
 sudo docker build --no-cache \
-  --build-arg COMMIT_TAG=seerr-plus-v1.8.35 \
-  -t local/seerr-plus:1.8.35 \
+  --build-arg COMMIT_TAG=seerr-plus-v1.8.50 \
+  -t local/seerr-plus:1.8.50 \
   -t local/seerr-plus:3.4.1 .
 
 cd ~/Docker/Seerr-Plus-Deploy
@@ -168,7 +175,7 @@ enforces this convention.
 To publish the current checkout to the private Seerr+ remote:
 
 ```bash
-bash scripts/seerr-plus-release.sh seerr-plus-v1.8.35
+bash scripts/seerr-plus-release.sh seerr-plus-v1.8.50
 ```
 
 ## Upstream and license

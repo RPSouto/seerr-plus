@@ -9,10 +9,73 @@ import { getSettings, NotificationAgentKey } from '@server/lib/settings';
 import logger from '@server/logger';
 import path from 'path';
 
+export interface MovieClubEmailMovie {
+  title: string;
+  tmdbId: number;
+  releaseDate?: string;
+  posterPath?: string;
+  overview?: string;
+  voteCount?: number;
+  requestedBy?: string;
+}
+
+export type MovieClubEmailText =
+  | string
+  | {
+      en: string;
+      pt: string;
+    };
+
+interface MovieClubEmailOptions {
+  actionLabel?: MovieClubEmailText;
+  movies?: MovieClubEmailMovie[];
+  highlightMovie?: MovieClubEmailMovie;
+}
+
+const posterUrl = (posterPath?: string) =>
+  posterPath
+    ? `https://image.tmdb.org/t/p/w600_and_h900_bestv2${posterPath}`
+    : undefined;
+
+const movieUrl = (applicationUrl: string | undefined, tmdbId?: number) =>
+  applicationUrl && tmdbId ? `${applicationUrl}/movie/${tmdbId}` : undefined;
+
+const isPortuguese = (user: User) =>
+  user.settings?.locale?.toLowerCase().startsWith('pt') ?? false;
+
+const localizedText = (text: MovieClubEmailText, portuguese: boolean) =>
+  typeof text === 'string' ? text : portuguese ? text.pt : text.en;
+
+const localizedLabels = (portuguese: boolean) =>
+  portuguese
+    ? {
+        greeting: 'Olá',
+        sectionTitle: 'Filmes',
+        releaseDate: 'Data de estreia',
+        votes: 'Votos',
+        requestedBy: 'Pedido por',
+        readSynopsis: 'Ler sinopse no Seerr+',
+        fallbackAction: 'Abrir Movie Club',
+        openMovieClub: 'Abrir Movie Club',
+        footer: 'Este email foi enviado pelo Seerr+ Plus Edition.',
+      }
+    : {
+        greeting: 'Hi',
+        sectionTitle: 'Films',
+        releaseDate: 'Release date',
+        votes: 'Votes',
+        requestedBy: 'Requested by',
+        readSynopsis: 'Read synopsis in Seerr+',
+        fallbackAction: 'Open Movie Club',
+        openMovieClub: 'Open Movie Club',
+        footer: 'This email was sent by Seerr+ Plus Edition.',
+      };
+
 export const sendMovieClubEmail = async (
-  subject: string,
-  body: string,
-  recipientUsers?: User[]
+  subject: MovieClubEmailText,
+  body: MovieClubEmailText,
+  recipientUsers?: User[],
+  options: MovieClubEmailOptions = {}
 ) => {
   try {
     const settings = getSettings();
@@ -25,9 +88,15 @@ export const sendMovieClubEmail = async (
     const movieClubUrl = applicationUrl
       ? `${applicationUrl}/movie-club`
       : undefined;
-    const notificationBody = movieClubUrl
-      ? `${body}\n\nOpen Movie Club: ${movieClubUrl}`
-      : body;
+    const highlightMovie = options.highlightMovie ?? options.movies?.[0];
+    const actionUrl =
+      movieUrl(applicationUrl, highlightMovie?.tmdbId) ?? movieClubUrl;
+    const movies =
+      options.movies?.map((movie) => ({
+        ...movie,
+        actionUrl: movieUrl(applicationUrl, movie.tmdbId),
+        imageUrl: posterUrl(movie.posterPath),
+      })) ?? [];
     const recipients = email
       ? users.filter(
           (user) =>
@@ -41,49 +110,76 @@ export const sendMovieClubEmail = async (
       : [];
     const results = email
       ? await Promise.allSettled(
-          recipients.map((user) =>
-            email.send({
-              template: path.join(
-                __dirname,
-                '../../templates/email/test-email'
-              ),
-              message: { to: user.email, subject },
+          recipients.map((user) => {
+            const portuguese = isPortuguese(user);
+            const labels = localizedLabels(portuguese);
+            const emailSubject = localizedText(subject, portuguese);
+
+            return email.send({
+              template: path.join(__dirname, '../../templates/email/movie-club'),
+              message: { to: user.email, subject: emailSubject },
               locals: {
-                body: notificationBody,
+                subject: emailSubject,
+                body: localizedText(body, portuguese),
                 applicationUrl: movieClubUrl,
                 applicationTitle: settings.main.applicationTitle,
+                actionUrl,
+                actionLabel: options.actionLabel
+                  ? localizedText(options.actionLabel, portuguese)
+                  : labels.fallbackAction,
+                labels,
+                movies,
+                highlightMovie: highlightMovie
+                  ? {
+                      ...highlightMovie,
+                      actionUrl: movieUrl(applicationUrl, highlightMovie.tmdbId),
+                      imageUrl: posterUrl(highlightMovie.posterPath),
+                    }
+                  : undefined,
                 recipientEmail: user.email,
                 recipientName: user.displayName,
               },
-            })
-          )
+            });
+          })
         )
       : [];
     const pushbullet = new PushbulletAgent();
     const pushover = new PushoverAgent();
     const directResults = await Promise.allSettled(
-      users.flatMap((user) => [
-        pushbullet.send(Notification.MOVIE_CLUB, {
-          subject,
-          message: notificationBody,
-          notifySystem: false,
-          notifyAdmin: false,
-          notifyUser: user,
-        }),
-        pushover.send(Notification.MOVIE_CLUB, {
-          subject,
-          message: notificationBody,
-          notifySystem: false,
-          notifyAdmin: false,
-          notifyUser: user,
-        }),
-      ])
+      users.flatMap((user) => {
+        const portuguese = isPortuguese(user);
+        const labels = localizedLabels(portuguese);
+        const notificationBody = movieClubUrl
+          ? `${localizedText(body, portuguese)}\n\n${labels.openMovieClub}: ${movieClubUrl}`
+          : localizedText(body, portuguese);
+
+        return [
+          pushbullet.send(Notification.MOVIE_CLUB, {
+            subject: localizedText(subject, portuguese),
+            message: notificationBody,
+            notifySystem: false,
+            notifyAdmin: false,
+            notifyUser: user,
+          }),
+          pushover.send(Notification.MOVIE_CLUB, {
+            subject: localizedText(subject, portuguese),
+            message: notificationBody,
+            notifySystem: false,
+            notifyAdmin: false,
+            notifyUser: user,
+          }),
+        ];
+      })
     );
+    const fallbackSubject = localizedText(subject, false);
+    const fallbackBody = movieClubUrl
+      ? `${localizedText(body, false)}\n\nOpen Movie Club: ${movieClubUrl}`
+      : localizedText(body, false);
     const discord = new DiscordAgent();
     const discordResult = discord.shouldSend()
       ? await discord.send(Notification.MOVIE_CLUB, {
-          subject,
-          message: notificationBody,
+          subject: fallbackSubject,
+          message: fallbackBody,
           notifySystem: true,
           notifyAdmin: false,
           notifyUsers: users,
@@ -91,13 +187,13 @@ export const sendMovieClubEmail = async (
       : true;
     logger.info('Movie Club email notification completed', {
       label: 'Seerr+',
-      subject,
+      subject: fallbackSubject,
       recipients: recipients.length,
       failed: results.filter((result) => result.status === 'rejected').length,
     });
     logger.info('Movie Club extra notification channels completed', {
       label: 'Seerr+',
-      subject,
+      subject: fallbackSubject,
       directDeliveries: directResults.length,
       failed:
         directResults.filter(
@@ -109,7 +205,7 @@ export const sendMovieClubEmail = async (
   } catch (error) {
     logger.error('Movie Club notification delivery failed', {
       label: 'Seerr+',
-      subject,
+      subject: localizedText(subject, false),
       error: error instanceof Error ? error.message : String(error),
     });
   }
