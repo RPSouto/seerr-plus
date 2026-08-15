@@ -114,6 +114,38 @@ interface TautulliInfoResponse {
   };
 }
 
+interface TautulliActivity {
+  stream_count?: number | string;
+  sessions?: unknown[];
+}
+
+interface TautulliLibrary {
+  count: number | string;
+  section_type: string;
+}
+
+interface TautulliActivityResponse {
+  response: {
+    result: string;
+    message?: string;
+    data: TautulliActivity;
+  };
+}
+
+interface TautulliLibrariesResponse {
+  response: {
+    result: string;
+    message?: string;
+    data: TautulliLibrary[];
+  };
+}
+
+export interface TautulliServerStats {
+  streams: number;
+  movies: number;
+  series: number;
+}
+
 class TautulliAPI {
   private axios: AxiosInstance;
 
@@ -141,6 +173,44 @@ class TautulliAPI {
       });
       throw new Error(
         `[Tautulli] Failed to fetch Tautulli server info: ${e.message}`,
+        { cause: e }
+      );
+    }
+  }
+
+  public async getServerStats(): Promise<TautulliServerStats> {
+    try {
+      const [activityResponse, librariesResponse] = await Promise.all([
+        this.axios.get<TautulliActivityResponse>('/api/v2', {
+          params: { cmd: 'get_activity' },
+        }),
+        this.axios.get<TautulliLibrariesResponse>('/api/v2', {
+          params: { cmd: 'get_libraries' },
+        }),
+      ]);
+      const activity = activityResponse.data.response.data;
+      const libraries = librariesResponse.data.response.data ?? [];
+      const toCount = (value: number | string | undefined): number => {
+        const count = Number(value ?? 0);
+        return Number.isFinite(count) ? count : 0;
+      };
+
+      return {
+        streams: toCount(activity.stream_count ?? activity.sessions?.length),
+        movies: libraries
+          .filter((library) => library.section_type.toLowerCase() === 'movie')
+          .reduce((total, library) => total + toCount(library.count), 0),
+        series: libraries
+          .filter((library) => library.section_type.toLowerCase() === 'show')
+          .reduce((total, library) => total + toCount(library.count), 0),
+      };
+    } catch (e) {
+      logger.error('Something went wrong fetching server stats from Tautulli', {
+        label: 'Tautulli API',
+        errorMessage: e.message,
+      });
+      throw new Error(
+        `[Tautulli] Failed to fetch server stats: ${e.message}`,
         { cause: e }
       );
     }

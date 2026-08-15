@@ -22,6 +22,7 @@ import MediaSlider from '@app/components/MediaSlider';
 import PersonCard from '@app/components/PersonCard';
 import RequestButton from '@app/components/RequestButton';
 import RemovalRequestButton from '@app/components/SeerrPlus/RemovalRequestButton';
+import RequestInterestUsers from '@app/components/SeerrPlus/RequestInterestUsers';
 import RequestModal from '@app/components/RequestModal';
 import Slider from '@app/components/Slider';
 import StatusBadge from '@app/components/StatusBadge';
@@ -747,6 +748,7 @@ const TvDetails = ({ tv }: TvDetailsProps) => {
               </Button>
             </Tooltip>
           )}
+          <RequestInterestUsers mediaId={data.mediaInfo?.id} />
         </div>
       </div>
       <div className="media-overview">

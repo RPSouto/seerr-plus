@@ -2161,6 +2161,50 @@ components:
       name: X-Api-Key
 
 paths:
+  /tautulli-stats:
+    get:
+      summary: Get read-only Plex library statistics from Tautulli
+      description: Returns active streams and combined movie and series totals using the Tautulli connection configured in Seerr. This endpoint does not scan or update the Plex library.
+      tags:
+        - seerrplus
+      parameters:
+        - in: query
+          name: refresh
+          description: Bypass the normal statistics cache when the minimum manual refresh interval has elapsed.
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Tautulli configuration state and library statistics
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - configured
+                properties:
+                  configured:
+                    type: boolean
+                  streams:
+                    type: integer
+                    minimum: 0
+                  movies:
+                    type: integer
+                    minimum: 0
+                  series:
+                    type: integer
+                    minimum: 0
+                  updatedAt:
+                    type: string
+                    format: date-time
+                  stale:
+                    type: boolean
+        '403':
+          description: Authentication required
+        '502':
+          description: Tautulli statistics could not be read and no cached values are available
   /status:
     get:
       summary: Get Seerr status
@@ -8261,6 +8305,71 @@ paths:
       responses:
         '200':
           description: Distinct interested users
+  /seerrplus/media/{mediaId}/interests:
+    get:
+      summary: Get distinct users interested in active standard requests for a media item
+      tags:
+        - seerrplus
+      parameters:
+        - in: path
+          name: mediaId
+          required: true
+          schema:
+            type: number
+      responses:
+        '200':
+          description: Distinct interested users from pending and approved requests
+    post:
+      summary: Add a user to every active standard request for a media item
+      description: Used by series so a single interest covers every active season request without creating another Sonarr acquisition.
+      tags:
+        - seerrplus
+      parameters:
+        - in: path
+          name: mediaId
+          required: true
+          schema:
+            type: number
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userId:
+                  type: number
+      responses:
+        '201':
+          description: Interest added to all active requests
+        '403':
+          description: Insufficient permission
+        '404':
+          description: Media or user not found
+        '409':
+          description: No active requests found
+  /seerrplus/media/{mediaId}/interests/{userId}:
+    delete:
+      summary: Remove a user's interest from every active standard request for a media item
+      tags:
+        - seerrplus
+      parameters:
+        - in: path
+          name: mediaId
+          required: true
+          schema:
+            type: number
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: number
+      responses:
+        '200':
+          description: Interest removed from all active requests
+        '403':
+          description: Insufficient permission
+        '404':
+          description: Participant not found
   /seerrplus/media/{mediaId}/removal-requests:
     post:
       summary: Request removal of available content
