@@ -1,5 +1,13 @@
 # Seerr+ changelog
 
+## seerr-plus-v1.8.35
+
+- Extend the shared-interest controls to series without creating duplicate Sonarr acquisitions.
+- Treat a series interest as media-wide, associating the user with every active request that covers its requested seasons.
+- Remove a user's series interest from all active season requests in one action and warn administrators when those requests become empty.
+- Show one deduplicated interested-user list on series detail pages, with the same compact expansion used for movies.
+- Keep Movie Club eligibility, voting, and history exclusively movie-based.
+
 ## seerr-plus-v1.8.30
 
 - Declare `/tautulli-stats` in the Seerr OpenAPI schema so request validation allows the endpoint to reach Express.

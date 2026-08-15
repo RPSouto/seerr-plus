@@ -114,43 +114,47 @@ const RequestButton = ({
       : undefined;
   }, [active4kRequests, user]);
 
-  // A movie can have an approved acquisition that is not yet available. The
-  // upstream UI hides the normal request button in this state, so Seerr+
-  // exposes a separate interest action against the existing acquisition.
-  const joinableMovieRequest = useMemo(
+  // An acquisition can be approved but not yet available. Seerr+ exposes an
+  // interest action against it without creating another Radarr/Sonarr request.
+  // Series interests are media-wide because one series can have several
+  // active requests covering different groups of seasons.
+  const joinableRequest = useMemo(
     () =>
-      mediaType === 'movie'
-        ? media?.requests.find(
-            (request) =>
-              !request.is4k &&
-              (request.status === MediaRequestStatus.PENDING ||
-                request.status === MediaRequestStatus.APPROVED)
-          )
-        : undefined,
-    [media?.requests, mediaType]
+      media?.requests.find(
+        (request) =>
+          !request.is4k &&
+          (request.status === MediaRequestStatus.PENDING ||
+            request.status === MediaRequestStatus.APPROVED)
+      ),
+    [media?.requests]
   );
-  const { data: requestParticipants, mutate: mutateRequestParticipants } =
-    useSWR<RequestParticipantsResponse>(
-      joinableMovieRequest
-        ? `/api/v1/seerrplus/requests/${joinableMovieRequest.id}/users`
-        : null
-    );
-  const hasJoinedMovieRequest = requestParticipants?.users.some(
+  const interestEndpoint =
+    mediaType === 'tv' && media?.id
+      ? `/api/v1/seerrplus/media/${media.id}/interests`
+      : joinableRequest
+        ? `/api/v1/seerrplus/requests/${joinableRequest.id}/users`
+        : null;
+  const { data: interestUsers, mutate: mutateInterestUsers } =
+    useSWR<RequestParticipantsResponse>(interestEndpoint);
+  const interestedUsers = interestUsers?.users;
+  const hasJoinedRequest = interestedUsers?.some(
     (participant) => participant.id === user?.id
   );
 
-  const joinMovieRequest = async (): Promise<void> => {
-    if (!joinableMovieRequest || isJoiningRequest) {
+  const joinExistingRequest = async (): Promise<void> => {
+    if (!joinableRequest || !media || isJoiningRequest) {
       return;
     }
 
     setIsJoiningRequest(true);
     try {
       await axios.post(
-        `/api/v1/seerrplus/requests/${joinableMovieRequest.id}/users`,
+        mediaType === 'tv'
+          ? `/api/v1/seerrplus/media/${media.id}/interests`
+          : `/api/v1/seerrplus/requests/${joinableRequest.id}/users`,
         {}
       );
-      await mutateRequestParticipants();
+      await mutateInterestUsers();
       onUpdate();
       addToast(intl.formatMessage(messages.interestadded), {
         appearance: 'success',
@@ -166,17 +170,19 @@ const RequestButton = ({
     }
   };
 
-  const withdrawMovieRequest = async (): Promise<void> => {
-    if (!joinableMovieRequest || !user || isJoiningRequest) {
+  const withdrawExistingInterest = async (): Promise<void> => {
+    if (!joinableRequest || !media || !user || isJoiningRequest) {
       return;
     }
 
     setIsJoiningRequest(true);
     try {
       const response = await axios.delete<RemoveInterestResponse>(
-        `/api/v1/seerrplus/requests/${joinableMovieRequest.id}/users/${user.id}`
+        mediaType === 'tv'
+          ? `/api/v1/seerrplus/media/${media.id}/interests/${user.id}`
+          : `/api/v1/seerrplus/requests/${joinableRequest.id}/users/${user.id}`
       );
-      await mutateRequestParticipants();
+      await mutateInterestUsers();
       onUpdate();
       addToast(
         intl.formatMessage(
@@ -375,30 +381,34 @@ const RequestButton = ({
   }
 
   if (
-    joinableMovieRequest &&
-    requestParticipants &&
-    !hasJoinedMovieRequest &&
-    hasPermission([Permission.REQUEST, Permission.REQUEST_MOVIE], {
-      type: 'or',
-    })
+    joinableRequest &&
+    interestedUsers &&
+    !hasJoinedRequest &&
+    hasPermission(
+      [
+        Permission.REQUEST,
+        mediaType === 'movie'
+          ? Permission.REQUEST_MOVIE
+          : Permission.REQUEST_TV,
+      ],
+      {
+        type: 'or',
+      }
+    )
   ) {
     buttons.push({
       id: 'join-request',
       text: intl.formatMessage(messages.joinrequest),
-      action: joinMovieRequest,
+      action: joinExistingRequest,
       svg: <UserPlusIcon />,
     });
   }
 
-  if (
-    joinableMovieRequest &&
-    requestParticipants &&
-    hasJoinedMovieRequest
-  ) {
+  if (joinableRequest && interestedUsers && hasJoinedRequest) {
     buttons.push({
       id: 'withdraw-interest',
       text: intl.formatMessage(messages.withdrawinterest),
-      action: withdrawMovieRequest,
+      action: withdrawExistingInterest,
       svg: <XMarkIcon />,
     });
   }

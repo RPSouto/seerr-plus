@@ -211,6 +211,154 @@ seerrPlusRoutes.get('/media/:mediaId/requesters', async (req, res, next) => {
   }
 });
 
+seerrPlusRoutes.get('/media/:mediaId/interests', async (req, res, next) => {
+  try {
+    const mediaId = Number(req.params.mediaId);
+    const participations = await getRepository(MediaRequestParticipant)
+      .createQueryBuilder('participant')
+      .innerJoinAndSelect('participant.user', 'user')
+      .innerJoin('participant.request', 'request')
+      .where('request.mediaId = :mediaId', { mediaId })
+      .andWhere('request.is4k = :is4k', { is4k: false })
+      .andWhere('request.status IN (:...statuses)', {
+        statuses: [MediaRequestStatus.PENDING, MediaRequestStatus.APPROVED],
+      })
+      .orderBy('participant.createdAt', 'ASC')
+      .getMany();
+    const users = [
+      ...new Map(
+        participations.map(({ user }) => [user.id, mapUser(user)] as const)
+      ).values(),
+    ];
+
+    return res.json({ mediaId, users });
+  } catch (error) {
+    return next({
+      status: 500,
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
+seerrPlusRoutes.post('/media/:mediaId/interests', async (req, res, next) => {
+  try {
+    if (!req.user) {
+      return next({ status: 401, message: 'Authentication required.' });
+    }
+
+    const mediaId = Number(req.params.mediaId);
+    const targetUserId = Number(req.body?.userId ?? req.user.id);
+    if (targetUserId !== req.user.id && !canManageParticipants(req.user)) {
+      return next({
+        status: 403,
+        message: 'You cannot add an interest for another user.',
+      });
+    }
+
+    const [media, targetUser, activeRequests] = await Promise.all([
+      getRepository(Media).findOne({ where: { id: mediaId } }),
+      getRepository(User).findOne({ where: { id: targetUserId } }),
+      getRepository(MediaRequest)
+        .createQueryBuilder('request')
+        .where('request.mediaId = :mediaId', { mediaId })
+        .andWhere('request.is4k = :is4k', { is4k: false })
+        .andWhere('request.status IN (:...statuses)', {
+          statuses: [
+            MediaRequestStatus.PENDING,
+            MediaRequestStatus.APPROVED,
+          ],
+        })
+        .getMany(),
+    ]);
+
+    if (!media || !targetUser) {
+      return next({ status: 404, message: 'Media or user not found.' });
+    }
+    if (activeRequests.length === 0) {
+      return next({ status: 409, message: 'No active requests found.' });
+    }
+
+    await Promise.all(
+      activeRequests.map((request) =>
+        addRequestParticipant(request, targetUser)
+      )
+    );
+
+    return res.status(201).json({
+      mediaId,
+      user: mapUser(targetUser),
+      requestIds: activeRequests.map(({ id }) => id),
+    });
+  } catch (error) {
+    return next({
+      status: 500,
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
+seerrPlusRoutes.delete(
+  '/media/:mediaId/interests/:userId',
+  async (req, res, next) => {
+    try {
+      if (!req.user) {
+        return next({ status: 401, message: 'Authentication required.' });
+      }
+
+      const mediaId = Number(req.params.mediaId);
+      const targetUserId = Number(req.params.userId);
+      if (targetUserId !== req.user.id && !canManageParticipants(req.user)) {
+        return next({
+          status: 403,
+          message: 'You cannot remove another user\'s interest.',
+        });
+      }
+
+      const participations = await getRepository(MediaRequestParticipant)
+        .createQueryBuilder('participant')
+        .innerJoinAndSelect('participant.request', 'request')
+        .where('request.mediaId = :mediaId', { mediaId })
+        .andWhere('request.is4k = :is4k', { is4k: false })
+        .andWhere('request.status IN (:...statuses)', {
+          statuses: [
+            MediaRequestStatus.PENDING,
+            MediaRequestStatus.APPROVED,
+          ],
+        })
+        .andWhere('participant.userId = :targetUserId', { targetUserId })
+        .getMany();
+
+      if (participations.length === 0) {
+        return next({ status: 404, message: 'Participant not found.' });
+      }
+
+      const requestIds = participations.map(({ request }) => request.id);
+      await Promise.all(
+        requestIds.map((requestId) =>
+          removeRequestParticipant(requestId, targetUserId)
+        )
+      );
+      const remainingParticipants = await Promise.all(
+        requestIds.map((requestId) => getRequestParticipants(requestId))
+      );
+
+      return res.json({
+        mediaId,
+        userId: targetUserId,
+        requestIds,
+        canDeleteRequest: remainingParticipants.every(
+          (participants) => participants.length === 0
+        ),
+      });
+    } catch (error) {
+      return next({
+        status: 500,
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+);
+
 const removalReasonLabels: Record<RemovalRequestReason, string> = {
   [RemovalRequestReason.FREE_SPACE]: 'Free up storage space',
   [RemovalRequestReason.NO_INTEREST]: 'Content no longer has interest',

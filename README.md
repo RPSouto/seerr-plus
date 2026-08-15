@@ -14,13 +14,15 @@ Seerr Plus Edition is an independent fork of
 keeps Seerr's acquisition workflow while adding collaboration around requests,
 availability, library cleanup, and choosing a Film of the Week.
 
-The current release is **seerr-plus-v1.8.30**, based on **Seerr v3.4.1**.
+The current release is **seerr-plus-v1.8.35**, based on **Seerr v3.4.1**.
 
 ## What Plus Edition adds
 
 ### Shared requests and interests
 
 - Several users can register interest in the same movie or series.
+- A series interest covers every active request for its requested seasons and
+  is displayed as one deduplicated list on the series page.
 - Seerr still creates only one acquisition request in Radarr or Sonarr.
 - Media and administration pages show the original requester and all interested
   users.
@@ -138,8 +140,8 @@ Build the image from the Seerr+ source checkout:
 cd ~/Docker/Seerr-Plus
 
 sudo docker build --no-cache \
-  --build-arg COMMIT_TAG=seerr-plus-v1.8.30 \
-  -t local/seerr-plus:1.8.30 \
+  --build-arg COMMIT_TAG=seerr-plus-v1.8.35 \
+  -t local/seerr-plus:1.8.35 \
   -t local/seerr-plus:3.4.1 .
 
 cd ~/Docker/Seerr-Plus-Deploy
@@ -166,7 +168,7 @@ enforces this convention.
 To publish the current checkout to the private Seerr+ remote:
 
 ```bash
-bash scripts/seerr-plus-release.sh seerr-plus-v1.8.30
+bash scripts/seerr-plus-release.sh seerr-plus-v1.8.35
 ```
 
 ## Upstream and license

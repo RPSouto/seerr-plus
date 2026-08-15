@@ -23,20 +23,33 @@ const messages = defineMessages('components.SeerrPlus.RequestInterestUsers', {
   showless: 'Show less',
 });
 
-const RequestInterestUsers = ({ requestId }: { requestId?: number }) => {
+const RequestInterestUsers = ({
+  requestId,
+  mediaId,
+}: {
+  requestId?: number;
+  mediaId?: number;
+}) => {
   const intl = useIntl();
   const { user: currentUser } = useUser();
   const [isExpanded, setIsExpanded] = useState(false);
   const { data } = useSWR<RequestParticipantsResponse>(
-    requestId ? `/api/v1/seerrplus/requests/${requestId}/users` : null
+    mediaId
+      ? `/api/v1/seerrplus/media/${mediaId}/interests`
+      : requestId
+        ? `/api/v1/seerrplus/requests/${requestId}/users`
+        : null
   );
+  const interestedUsers = data?.users ?? [];
 
-  if (!requestId || !data?.users.length) {
+  if ((!requestId && !mediaId) || !interestedUsers.length) {
     return null;
   }
 
-  const visibleUsers = isExpanded ? data.users : data.users.slice(0, 3);
-  const remainingUsers = data.users.length - visibleUsers.length;
+  const visibleUsers = isExpanded
+    ? interestedUsers
+    : interestedUsers.slice(0, 3);
+  const remainingUsers = interestedUsers.length - visibleUsers.length;
 
   return (
     <div className="ml-3 flex min-w-0 max-w-full flex-wrap items-center gap-2 rounded-md bg-gray-800/80 px-3 py-2 text-sm ring-1 ring-gray-700 xl:ml-3">
@@ -78,7 +91,7 @@ const RequestInterestUsers = ({ requestId }: { requestId?: number }) => {
             {intl.formatMessage(messages.andmore, { count: remainingUsers })}
           </button>
         )}
-        {isExpanded && data.users.length > 3 && (
+        {isExpanded && interestedUsers.length > 3 && (
           <button
             type="button"
             className="whitespace-nowrap text-gray-400 transition hover:text-white hover:underline"

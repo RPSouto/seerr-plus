@@ -16,11 +16,11 @@ Confirm that SSH authentication works:
 ssh -T git@github.com
 ```
 
-Publish release 1.8.30:
+Publish release 1.8.35:
 
 ```bash
 cd ~/Docker/Seerr-Plus
-bash scripts/seerr-plus-release.sh seerr-plus-v1.8.30
+bash scripts/seerr-plus-release.sh seerr-plus-v1.8.35
 ```
 
 For the next release, only change the version/branch argument:
@@ -42,5 +42,5 @@ To validate locally without pushing:
 
 ```bash
 SEERR_PLUS_NO_PUSH=true \
-  bash scripts/seerr-plus-release.sh seerr-plus-v1.8.30
+  bash scripts/seerr-plus-release.sh seerr-plus-v1.8.35
 ```

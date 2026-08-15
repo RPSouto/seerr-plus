@@ -1,6 +1,6 @@
-# Seerr+ v1.8.30
+# Seerr+ v1.8.35
 
-Current release identifier: `seerr-plus-v1.8.30`.
+Current release identifier: `seerr-plus-v1.8.35`.
 
 See [FEATURES.md](./FEATURES.md) for the complete feature set and
 [PRIVATE_GIT.md](./PRIVATE_GIT.md) for the one-command private release flow.
@@ -19,6 +19,9 @@ request after recording that user's interest. It does not create another
 `MediaRequest` and therefore does not trigger another Radarr request. TV
 requests follow the same rule for seasons already covered by active requests;
 only genuinely new seasons continue through the normal Sonarr workflow.
+The series detail action records interest across every active standard request
+for that series, so split season requests still produce one coherent,
+deduplicated interested-user list.
 
 Joining an existing acquisition does not consume quota. Creating a new movie
 or adding new TV seasons keeps the upstream permission, quota, approval, and
@@ -33,6 +36,9 @@ All routes require normal Seerr authentication.
 - `POST /api/v1/seerrplus/requests/:id/users` with optional `{ "userId": 2 }`
 - `DELETE /api/v1/seerrplus/requests/:id/users/:userId`
 - `GET /api/v1/seerrplus/media/:mediaId/requesters`
+- `GET /api/v1/seerrplus/media/:mediaId/interests`
+- `POST /api/v1/seerrplus/media/:mediaId/interests`
+- `DELETE /api/v1/seerrplus/media/:mediaId/interests/:userId`
 
 A user can add or remove their own interest. Acting for another user requires
 `MANAGE_REQUESTS` or `MANAGE_USERS`. The original requester cannot be removed;
