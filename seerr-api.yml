@@ -8477,6 +8477,23 @@ paths:
       responses:
         '200':
           description: Up to twelve previous Film of the Week sessions
+  /seerrplus/movie-club/winners/{mediaId}:
+    get:
+      summary: Get Movie Club winner status for a movie
+      description: Returns whether the supplied Seerr media record has won at least one Movie Club vote.
+      tags:
+        - seerrplus
+      parameters:
+        - in: path
+          name: mediaId
+          required: true
+          schema:
+            type: number
+      responses:
+        '200':
+          description: Movie Club winner status
+        '400':
+          description: Invalid media id
   /seerrplus/movie-club/suggestions/{mediaId}:
     get:
       summary: Get the current user's weekly Movie Club suggestion state
