@@ -14,7 +14,7 @@ Seerr Plus Edition is an independent fork of
 keeps Seerr's acquisition workflow while adding collaboration around requests,
 availability, library cleanup, and choosing a Film of the Week.
 
-The current release is **seerr-plus-v1.8.50**, based on **Seerr v3.4.1**.
+The current release is **seerr-plus-v1.8.90**, based on **Seerr v3.4.1**.
 
 ## What Plus Edition adds
 
