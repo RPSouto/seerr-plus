@@ -16,20 +16,21 @@ Confirm that SSH authentication works:
 ssh -T git@github.com
 ```
 
-Publish the stable baseline:
+Publish release 1.8.10:
 
 ```bash
 cd ~/Docker/Seerr-Plus
-bash scripts/seerr-plus-release.sh seerr-plus-v1.0
+bash scripts/seerr-plus-release.sh seerr-plus-v1.8.10
 ```
 
 For the next release, only change the version/branch argument:
 
 ```bash
-bash scripts/seerr-plus-release.sh seerr-plus-v1.0.1
+bash scripts/seerr-plus-release.sh seerr-plus-v1.8.15
 ```
 
-The script validates the version, creates or switches to that branch, updates
+The patch number must always be a multiple of 5, such as `1.8.5`, `1.8.10`,
+or `1.9.0`. The script validates this convention, creates or switches to that branch, updates
 `SEERR_PLUS_VERSION`, commits all non-ignored changes, creates an annotated tag
 with the same version and pushes both branch and tag to the `private` remote.
 It never force-pushes or moves an existing tag.
@@ -41,5 +42,5 @@ To validate locally without pushing:
 
 ```bash
 SEERR_PLUS_NO_PUSH=true \
-  bash scripts/seerr-plus-release.sh seerr-plus-v1.0.1
+  bash scripts/seerr-plus-release.sh seerr-plus-v1.8.10
 ```

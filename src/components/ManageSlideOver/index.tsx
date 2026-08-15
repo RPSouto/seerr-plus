@@ -7,6 +7,9 @@ import Tooltip from '@app/components/Common/Tooltip';
 import DownloadBlock from '@app/components/DownloadBlock';
 import IssueBlock from '@app/components/IssueBlock';
 import RequestBlock from '@app/components/RequestBlock';
+import RequestParticipants, {
+  messages as requestParticipantMessages,
+} from '@app/components/SeerrPlus/RequestParticipants';
 import useSettings from '@app/hooks/useSettings';
 import useToasts from '@app/hooks/useToasts';
 import { Permission, useUser } from '@app/hooks/useUser';
@@ -328,6 +331,21 @@ const ManageSlideOver = ({
                   </li>
                 ))}
               </ul>
+            </div>
+          </div>
+        )}
+        {requests.length > 0 && (
+          <div>
+            <h3 className="mb-2 text-xl font-bold">
+              {intl.formatMessage(requestParticipantMessages.interestedusers)}
+            </h3>
+            <div className="space-y-3 rounded-md border border-gray-700 p-3 shadow">
+              {requests.map((request) => (
+                <RequestParticipants
+                  key={`manage-request-participants-${request.id}`}
+                  requestId={request.id}
+                />
+              ))}
             </div>
           </div>
         )}

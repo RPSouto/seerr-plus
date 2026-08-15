@@ -143,6 +143,7 @@ const UserPushbulletSettings = () => {
             </div>
             <NotificationTypeSelector
               user={user}
+              includeMovieClub
               currentTypes={values.types}
               onUpdate={(newTypes) => {
                 setFieldValue('types', newTypes);

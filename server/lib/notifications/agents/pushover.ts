@@ -160,17 +160,21 @@ class PushoverAgent
     }
 
     const url = applicationUrl
-      ? payload.issue
-        ? `${applicationUrl}/issues/${payload.issue.id}`
-        : payload.media
-          ? `${applicationUrl}/${payload.media.mediaType}/${payload.media.tmdbId}`
-          : undefined
+      ? type === Notification.MOVIE_CLUB
+        ? `${applicationUrl}/movie-club`
+        : payload.issue
+          ? `${applicationUrl}/issues/${payload.issue.id}`
+          : payload.media
+            ? `${applicationUrl}/${payload.media.mediaType}/${payload.media.tmdbId}`
+            : undefined
       : undefined;
     const url_title = url
-      ? intl.formatMessage(
-          payload.issue ? globalMessages.viewIssue : globalMessages.viewMedia,
-          { applicationTitle }
-        )
+      ? type === Notification.MOVIE_CLUB
+        ? 'Open Movie Club'
+        : intl.formatMessage(
+            payload.issue ? globalMessages.viewIssue : globalMessages.viewMedia,
+            { applicationTitle }
+          )
       : undefined;
 
     let attachment_base64;
@@ -249,8 +253,9 @@ class PushoverAgent
         ) &&
         payload.notifyUser.settings.pushoverApplicationToken &&
         payload.notifyUser.settings.pushoverUserKey &&
-        (payload.notifyUser.settings.pushoverApplicationToken !==
-          settings.options.accessToken ||
+        (type === Notification.MOVIE_CLUB ||
+          payload.notifyUser.settings.pushoverApplicationToken !==
+            settings.options.accessToken ||
           payload.notifyUser.settings.pushoverUserKey !==
             settings.options.userToken)
       ) {

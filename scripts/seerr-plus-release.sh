@@ -7,11 +7,18 @@ remote_url="${SEERR_PLUS_REMOTE_URL:-git@github.com:RPSouto/seerr-plus.git}"
 
 release="${1:-}"
 if [[ -z "$release" ]]; then
-  read -r -p 'Branch/release (example: seerr-plus-v1.0.1): ' release
+  read -r -p 'Branch/release (example: seerr-plus-v1.8.5): ' release
 fi
 
-if [[ ! "$release" =~ ^seerr-plus-v[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]; then
-  echo 'Invalid release. Use seerr-plus-v1.0 or seerr-plus-v1.0.1.' >&2
+if [[ ! "$release" =~ ^seerr-plus-v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  echo 'Invalid release. Use the full format seerr-plus-vMAJOR.MINOR.PATCH.' >&2
+  exit 2
+fi
+
+version="${release#seerr-plus-v}"
+patch_version="${version##*.}"
+if (( 10#$patch_version % 5 != 0 )); then
+  echo 'Invalid release patch. PATCH must be a multiple of 5 (for example 1.8.5, 1.8.10, or 1.9.0).' >&2
   exit 2
 fi
 

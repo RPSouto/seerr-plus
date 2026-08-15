@@ -50,8 +50,20 @@ all votes are cleared, the lowest-ranked candidate is removed (community
 interest is used as a deterministic tie-break), and the deadline is extended by
 24 hours. Seerr+ emails users when a vote opens, a winner is selected, or a
 tie-break begins. Email delivery requires the global Seerr email agent to be
-enabled and each recipient to have an email address. Winner announcements also
-identify every user who requested or registered interest in the selected film.
+enabled, each recipient to have an email address, and the recipient's personal
+**Movie Club** email preference to be enabled under Profile, Settings,
+Notifications, Email. The preference is enabled for existing users when this
+feature is installed. Winner announcements also identify every user who
+requested or registered interest in the selected film.
+
+Users can also enable Movie Club alerts in their personal Discord, Pushbullet,
+and Pushover notification settings. Pushbullet and Pushover use each user's
+personal credentials. Discord publishes one message to the globally configured
+channel and mentions users who enabled the Movie Club type and registered a
+valid Discord ID. The administrator must enable Movie Club in the global
+Discord agent before the option becomes available to users. Discord and
+Pushover actions link directly to the Movie Club page; Pushbullet messages
+include the same absolute link in their body.
 When Seerr's public application URL is configured, the email action button
 links directly to the Movie Club page, and the same absolute link is included
 in the email body for assignment and voting messages.

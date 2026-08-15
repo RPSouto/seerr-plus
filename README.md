@@ -14,7 +14,7 @@ Seerr Plus Edition is an independent fork of
 keeps Seerr's acquisition workflow while adding collaboration around requests,
 availability, library cleanup, and choosing a Film of the Week.
 
-The current release is **seerr-plus-v1.6.2**, based on **Seerr v3.4.1**.
+The current release is **seerr-plus-v1.8.10**, based on **Seerr v3.4.1**.
 
 ## What Plus Edition adds
 
@@ -24,6 +24,9 @@ The current release is **seerr-plus-v1.6.2**, based on **Seerr v3.4.1**.
 - Seerr still creates only one acquisition request in Radarr or Sonarr.
 - Media and administration pages show the original requester and all interested
   users.
+- Long participant lists stay compact: Manage Movie uses an expandable,
+  scrollable management panel, while movie pages show three users followed by
+  an “and N more” control.
 - Users can withdraw their own interest without affecting other participants.
 - When the last interested user leaves, administrators receive a warning before
   the underlying request can be removed.
@@ -79,6 +82,8 @@ The current release is **seerr-plus-v1.6.2**, based on **Seerr v3.4.1**.
   link for the discussion.
 - Assignment, voting, result, and tie-break emails contain a direct link to the
   Movie Club page.
+- Each user can enable or disable Movie Club alerts in their personal Email,
+  Discord, Pushbullet, and Pushover notification settings.
 - The Discover banner appears only when a vote is active or a Film of the Week
   has been selected.
 
@@ -122,8 +127,8 @@ Build the image from the Seerr+ source checkout:
 cd ~/Docker/Seerr-Plus
 
 sudo docker build --no-cache \
-  --build-arg COMMIT_TAG=seerr-plus-v1.6.2 \
-  -t local/seerr-plus:1.6.2 \
+  --build-arg COMMIT_TAG=seerr-plus-v1.8.10 \
+  -t local/seerr-plus:1.8.10 \
   -t local/seerr-plus:3.4.1 .
 
 cd ~/Docker/Seerr-Plus-Deploy
@@ -142,13 +147,15 @@ https://seerr.example.com
 
 ## Versioning
 
-Seerr+ releases use the `seerr-plus-vMAJOR.MINOR.PATCH` format. Release branches
-and annotated Git tags use the same name.
+Seerr+ releases use the `seerr-plus-vMAJOR.MINOR.PATCH` format. The `PATCH`
+number must be a multiple of 5 (for example `1.8.5`, `1.8.10`, or `1.9.0`).
+Release branches and annotated Git tags use the same name. The release script
+enforces this convention.
 
 To publish the current checkout to the private Seerr+ remote:
 
 ```bash
-bash scripts/seerr-plus-release.sh seerr-plus-v1.6.2
+bash scripts/seerr-plus-release.sh seerr-plus-v1.8.10
 ```
 
 ## Upstream and license

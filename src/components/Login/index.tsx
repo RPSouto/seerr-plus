@@ -257,6 +257,9 @@ const Login = () => {
           </>
         </div>
       </div>
+      <footer className="relative z-40 mt-auto flex justify-center px-4 pt-10">
+        <span className="seerr-plus-brand">Plus Edition</span>
+      </footer>
     </div>
   );
 };

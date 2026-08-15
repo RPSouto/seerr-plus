@@ -3,7 +3,11 @@ import CachedImage from '@app/components/Common/CachedImage';
 import useToasts from '@app/hooks/useToasts';
 import { Permission, useUser } from '@app/hooks/useUser';
 import defineMessages from '@app/utils/defineMessages';
-import { UsersIcon, XMarkIcon } from '@heroicons/react/24/solid';
+import {
+  ChevronDownIcon,
+  UsersIcon,
+  XMarkIcon,
+} from '@heroicons/react/24/solid';
 import axios from 'axios';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -23,28 +27,36 @@ type ParticipantsResponse = {
   users: ParticipantUser[];
 };
 
-const messages = defineMessages('components.SeerrPlus.RequestParticipants', {
-  interestedusers: 'Interested Users',
-  nointerestedusers:
-    'No interested users remain. This request can now be deleted.',
-  removeinterest: 'Remove Interest',
-  removeinterestconfirm: "Remove this user's interest from the request?",
-  removefailed: 'Unable to remove this user from the request.',
-});
+export const messages = defineMessages(
+  'components.SeerrPlus.RequestParticipants',
+  {
+    interestedusers: 'Interested Users',
+    nointerestedusers:
+      'No interested users remain. This request can now be deleted.',
+    removeinterest: 'Remove Interest',
+    removeinterestconfirm: "Remove this user's interest from the request?",
+    removefailed: 'Unable to remove this user from the request.',
+    manageinterestedusers: 'Manage interested users ({count})',
+    interestedusercount: '{count} interested users',
+  }
+);
 
 type RequestParticipantsProps = {
   requestId: number;
   onParticipantCountChange?: (count: number) => void;
+  displayMode?: 'default' | 'countOnly';
 };
 
 const RequestParticipants = ({
   requestId,
   onParticipantCountChange,
+  displayMode = 'default',
 }: RequestParticipantsProps) => {
   const intl = useIntl();
   const { user: currentUser, hasPermission } = useUser();
   const { addToast } = useToasts();
   const [removingUserId, setRemovingUserId] = useState<number>();
+  const [isExpanded, setIsExpanded] = useState(false);
   const { data, mutate } = useSWR<ParticipantsResponse>(
     `/api/v1/seerrplus/requests/${requestId}/users`
   );
@@ -85,33 +97,57 @@ const RequestParticipants = ({
     return null;
   }
 
+  if (displayMode === 'countOnly') {
+    return null;
+  }
+
   if (users.length === 0) {
     return (
-      <div className="mt-2 rounded-md border border-amber-500/50 bg-amber-900/30 px-3 py-2 text-sm font-medium text-amber-200">
+      <div className="rounded-md border border-amber-500/50 bg-amber-900/30 px-3 py-2 text-sm font-medium text-amber-200">
         {intl.formatMessage(messages.nointerestedusers)}
       </div>
     );
   }
 
   return (
-    <div className="mt-1 flex flex-nowrap text-sm">
-      <span className="flex min-w-0 items-center">
-        <UsersIcon className="mr-1.5 h-5 w-5 flex-shrink-0" />
-        <span className="mr-2 text-gray-400">
-          {intl.formatMessage(messages.interestedusers)}:
+    <div className="text-sm">
+      <button
+        type="button"
+        className="flex w-full items-center rounded-md border border-gray-600 bg-gray-800/70 px-3 py-2 text-left font-medium text-gray-200 transition hover:border-gray-500 hover:bg-gray-700/80"
+        aria-expanded={isExpanded}
+        onClick={() => setIsExpanded((expanded) => !expanded)}
+      >
+        <UsersIcon className="mr-2 h-5 w-5 flex-shrink-0" />
+        <span className="min-w-0 flex-1 truncate">
+          {intl.formatMessage(
+            canManage
+              ? messages.manageinterestedusers
+              : messages.interestedusercount,
+            { count: users.length }
+          )}
         </span>
-        <span className="flex min-w-0 flex-wrap gap-1.5">
+        <ChevronDownIcon
+          className={`ml-2 h-4 w-4 flex-shrink-0 transition-transform ${
+            isExpanded ? 'rotate-180' : ''
+          }`}
+        />
+      </button>
+      {isExpanded && (
+        <div className="mt-2 max-h-64 space-y-2 overflow-y-auto rounded-md border border-gray-700 bg-gray-900/60 p-2">
           {users.map((participant) => (
-            <span key={participant.id} className="flex items-center">
+            <div
+              key={participant.id}
+              className="flex min-w-0 items-center justify-between gap-2 rounded px-2 py-1 hover:bg-gray-800"
+            >
               <Link
                 href={
                   participant.id === currentUser?.id
                     ? '/profile'
                     : `/users/${participant.id}`
                 }
-                className="flex items-center font-semibold text-gray-100 transition duration-300 hover:text-white hover:underline"
+                className="flex min-w-0 items-center font-semibold text-gray-100 transition duration-300 hover:text-white hover:underline"
               >
-                <span className="avatar-sm mr-1">
+                <span className="avatar-sm mr-2 flex-shrink-0">
                   <CachedImage
                     type="avatar"
                     src={participant.avatar}
@@ -121,13 +157,13 @@ const RequestParticipants = ({
                     height={20}
                   />
                 </span>
-                {participant.displayName}
+                <span className="truncate">{participant.displayName}</span>
               </Link>
               {(participant.id === currentUser?.id || canManage) && (
                 <Button
                   buttonType="danger"
                   buttonSize="sm"
-                  className="ml-1 !p-1"
+                  className="ml-1 flex-shrink-0 !p-1"
                   disabled={removingUserId !== undefined}
                   onClick={() => removeInterest(participant.id)}
                   aria-label={intl.formatMessage(messages.removeinterest)}
@@ -135,10 +171,10 @@ const RequestParticipants = ({
                   <XMarkIcon className="h-3.5 w-3.5" />
                 </Button>
               )}
-            </span>
+            </div>
           ))}
-        </span>
-      </span>
+        </div>
+      )}
     </div>
   );
 };

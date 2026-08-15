@@ -160,8 +160,9 @@ class PushbulletAgent
           type
         ) &&
         payload.notifyUser.settings?.pushbulletAccessToken &&
-        payload.notifyUser.settings.pushbulletAccessToken !==
-          settings.options.accessToken
+        (type === Notification.MOVIE_CLUB ||
+          payload.notifyUser.settings.pushbulletAccessToken !==
+            settings.options.accessToken)
       ) {
         logger.debug('Sending Pushbullet notification', {
           label: 'Notifications',

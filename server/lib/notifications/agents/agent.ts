@@ -12,6 +12,7 @@ export interface NotificationPayload {
   notifySystem: boolean;
   notifyAdmin: boolean;
   notifyUser?: User;
+  notifyUsers?: User[];
   media?: Media;
   image?: string;
   message?: string;
