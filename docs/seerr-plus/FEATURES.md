@@ -38,6 +38,17 @@ upstream Seerr. New controls have locale keys in every Seerr catalog, with
 complete Portuguese and English strings and English fallback strings in the
 remaining catalogs.
 
+## Read-only Plex library statistics
+
+Every authenticated user can see active streams and the combined movie and
+series totals in the sidebar. Seerr+ reads these values from the configured
+Tautulli API, refreshes them automatically every minute, and provides a manual
+statistics refresh button. These calls never scan or update the Plex library.
+
+The panel displays the relative time of the last successful read. Server-side
+caching limits Tautulli load, and the last values remain visible if a temporary
+API failure occurs.
+
 ## Plex collection sync extension point
 
 The internal `request.interest.added` event and

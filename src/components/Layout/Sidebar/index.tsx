@@ -1,5 +1,6 @@
 import Badge from '@app/components/Common/Badge';
 import VersionStatus from '@app/components/Layout/VersionStatus';
+import LibraryStats from '@app/components/SeerrPlus/LibraryStats';
 import useClickOutside from '@app/hooks/useClickOutside';
 import { Permission, useUser } from '@app/hooks/useUser';
 import defineMessages from '@app/utils/defineMessages';
@@ -243,6 +244,7 @@ const Sidebar = ({
                         );
                       })}
                     </nav>
+                    <LibraryStats />
                     {hasPermission(Permission.ADMIN) && (
                       <div className="px-2">
                         <VersionStatus onClick={() => setClosed()} />
@@ -334,6 +336,7 @@ const Sidebar = ({
                   );
                 })}
               </nav>
+              <LibraryStats />
               {hasPermission(Permission.ADMIN) && (
                 <div className="px-2">
                   <VersionStatus />

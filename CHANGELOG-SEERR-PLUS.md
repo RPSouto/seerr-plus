@@ -1,5 +1,31 @@
 # Seerr+ changelog
 
+## seerr-plus-v1.8.30
+
+- Declare `/tautulli-stats` in the Seerr OpenAPI schema so request validation allows the endpoint to reach Express.
+- Continue reading hostname, port, SSL, URL base, and API key directly from Seerr's existing Tautulli settings.
+- Document the authenticated response, optional manual refresh, cache behavior, and read-only library semantics.
+
+## seerr-plus-v1.8.25
+
+- Move the sidebar statistics endpoint to the simple authenticated API path `/api/v1/tautulli-stats`.
+- Remove the problematic `/seerrplus` prefix after runtime inspection confirmed matching routes under it still returned HTTP 404.
+- Update both automatic and manual frontend requests while preserving cache, permissions, translations, and read-only Tautulli behavior.
+
+## seerr-plus-v1.8.20
+
+- Register the authenticated Tautulli statistics endpoint directly on the main API router.
+- Avoid the nested `/seerrplus` router matching issue that returned HTTP 404 despite the handler being present.
+- Keep the public frontend URL, cache behavior, permissions, and read-only Tautulli operations unchanged.
+
+## seerr-plus-v1.8.15
+
+- Add read-only Plex library statistics to the sidebar for every authenticated user.
+- Show active streams and the combined movie and series totals from all Tautulli libraries.
+- Refresh statistics automatically every minute and provide a manual refresh control.
+- Display the relative time of the last successful update and retain stale data during temporary Tautulli failures.
+- Cache Tautulli reads server-side to limit load; these checks never scan or refresh the Plex library.
+
 ## seerr-plus-v1.8.10
 
 - Move interested-user management out of the request-owner row in Manage Movie.

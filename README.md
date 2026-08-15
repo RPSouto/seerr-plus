@@ -14,7 +14,7 @@ Seerr Plus Edition is an independent fork of
 keeps Seerr's acquisition workflow while adding collaboration around requests,
 availability, library cleanup, and choosing a Film of the Week.
 
-The current release is **seerr-plus-v1.8.10**, based on **Seerr v3.4.1**.
+The current release is **seerr-plus-v1.8.30**, based on **Seerr v3.4.1**.
 
 ## What Plus Edition adds
 
@@ -87,6 +87,17 @@ The current release is **seerr-plus-v1.8.10**, based on **Seerr v3.4.1**.
 - The Discover banner appears only when a vote is active or a Film of the Week
   has been selected.
 
+### Plex library statistics
+
+- Every authenticated user can see active streams and the total number of
+  movies and series in the sidebar.
+- Values are read from the existing Tautulli integration and combine multiple
+  Plex libraries of the same type.
+- Statistics refresh automatically every minute and can also be refreshed
+  manually without starting a Plex scan or a Seerr library job.
+- The panel shows when the last successful update occurred and retains the last
+  values if Tautulli is temporarily unavailable.
+
 ### Plus Edition interface
 
 - A black visual identity distinguishes Plus Edition from upstream Seerr.
@@ -127,8 +138,8 @@ Build the image from the Seerr+ source checkout:
 cd ~/Docker/Seerr-Plus
 
 sudo docker build --no-cache \
-  --build-arg COMMIT_TAG=seerr-plus-v1.8.10 \
-  -t local/seerr-plus:1.8.10 \
+  --build-arg COMMIT_TAG=seerr-plus-v1.8.30 \
+  -t local/seerr-plus:1.8.30 \
   -t local/seerr-plus:3.4.1 .
 
 cd ~/Docker/Seerr-Plus-Deploy
@@ -155,7 +166,7 @@ enforces this convention.
 To publish the current checkout to the private Seerr+ remote:
 
 ```bash
-bash scripts/seerr-plus-release.sh seerr-plus-v1.8.10
+bash scripts/seerr-plus-release.sh seerr-plus-v1.8.30
 ```
 
 ## Upstream and license

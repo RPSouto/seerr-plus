@@ -1,4 +1,12 @@
 {
+  "components.SeerrPlus.LibraryStats.title": "Biblioteca Plex",
+  "components.SeerrPlus.LibraryStats.streams": "Streams",
+  "components.SeerrPlus.LibraryStats.movies": "Filmes",
+  "components.SeerrPlus.LibraryStats.series": "Séries",
+  "components.SeerrPlus.LibraryStats.refresh": "Atualizar estatísticas",
+  "components.SeerrPlus.LibraryStats.updated": "Atualizado {relativeTime}",
+  "components.SeerrPlus.LibraryStats.unavailable": "Estatísticas indisponíveis",
+  "components.SeerrPlus.LibraryStats.stale": "A mostrar a última atualização bem-sucedida",
   "components.SeerrPlus.RequestInterestUsers.andmore": "e mais {count}",
   "components.SeerrPlus.RequestInterestUsers.showless": "Mostrar menos",
   "components.SeerrPlus.RequestParticipants.interestedusercount": "{count} utilizadores interessados",
