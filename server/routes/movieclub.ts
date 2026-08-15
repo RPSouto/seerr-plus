@@ -9,7 +9,10 @@ import MovieClubSuggestion from '@server/entity/MovieClubSuggestion';
 import MovieClubVote from '@server/entity/MovieClubVote';
 import { User } from '@server/entity/User';
 import { Permission } from '@server/lib/permissions';
-import { sendMovieClubEmail } from '@server/lib/seerrplus/movieClubNotifications';
+import {
+  MovieClubEmailMovie,
+  sendMovieClubEmail,
+} from '@server/lib/seerrplus/movieClubNotifications';
 import { getMovieClubWeekKey } from '@server/lib/seerrplus/movieClubSuggestions';
 import { getMediaRequesters } from '@server/lib/seerrplus/requests';
 import type { NextFunction, Request, Response } from 'express';
@@ -45,15 +48,37 @@ const movieDetails = async (media: Media, language?: string) => {
   };
 };
 
-const requesterText = (movie: Awaited<ReturnType<typeof movieDetails>>) => {
+const requesterText = (
+  movie: Awaited<ReturnType<typeof movieDetails>>,
+  portuguese = false
+) => {
   const names = movie.interestedUsers.map((user) => user.displayName);
-  if (!names.length) return 'Requested by the Seerr+ community.';
+  if (!names.length) {
+    return portuguese
+      ? 'Pedido pela comunidade Seerr+.'
+      : 'Requested by the Seerr+ community.';
+  }
   const requestedBy =
     names.length === 1
       ? names[0]
-      : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
-  return `Requested by ${requestedBy}.`;
+      : `${names.slice(0, -1).join(', ')} ${
+          portuguese ? 'e' : 'and'
+        } ${names[names.length - 1]}`;
+  return portuguese ? `Pedido por ${requestedBy}.` : `Requested by ${requestedBy}.`;
 };
+
+const toEmailMovie = (
+  movie: Awaited<ReturnType<typeof movieDetails>>,
+  voteCount?: number
+): MovieClubEmailMovie => ({
+  title: movie.title,
+  tmdbId: movie.tmdbId,
+  releaseDate: movie.releaseDate,
+  posterPath: movie.posterPath,
+  overview: movie.overview,
+  voteCount,
+  requestedBy: movie.interestedUsers.map((user) => user.displayName).join(', '),
+});
 
 const getEligibleMedia = async () => {
   const weekKey = getMovieClubWeekKey();
@@ -392,12 +417,52 @@ movieClubRoutes.post('/sessions', async (req, res, next) => {
     }
     if (curatorIds.length) {
       await getRepository(MovieClubCurator).save(curators.map((user) => new MovieClubCurator({ session, user })));
-      await sendMovieClubEmail('Movie Club: you are choosing this week\'s films', `You have been selected as a Movie Club responsible user. Please open Seerr+, choose exactly four films from the community requests, and submit them before ${startsAt?.toLocaleString() ?? closesAt.toLocaleString()}.`, curators);
+      await sendMovieClubEmail(
+        {
+          en: 'Movie Club: you are choosing this week\'s films',
+          pt: 'Movie Club: vais escolher os filmes desta semana',
+        },
+        {
+          en: `You have been selected as a Movie Club responsible user. Open Seerr+, review the community list, and choose exactly four films before ${startsAt?.toLocaleString() ?? closesAt.toLocaleString()}.`,
+          pt: `Foste selecionado como responsável do Movie Club. Abre o Seerr+, revê a lista da comunidade e escolhe exatamente quatro filmes antes de ${startsAt?.toLocaleString() ?? closesAt.toLocaleString()}.`,
+        },
+        curators,
+        {
+          actionLabel: {
+            en: 'Choose the Movie Club films',
+            pt: 'Escolher os filmes do Movie Club',
+          },
+        }
+      );
     }
     const created = await findCurrentSession();
     const createdDetails = await serializeSession(created as MovieClubSession, req.user.id, req.locale);
     if (session.status === MovieClubSessionStatus.VOTING) {
-      await sendMovieClubEmail('Movie Club voting is now open', `This week\'s Movie Club candidates are: ${createdDetails.candidates.map((candidate) => candidate.title).join(', ')}. Cast your vote in Seerr+ before ${closesAt.toLocaleString()}.`);
+      await sendMovieClubEmail(
+        {
+          en: 'Movie Club voting is now open',
+          pt: 'A votação do Movie Club já está aberta',
+        },
+        {
+          en: `Voting is open. Pick the film you want everyone to watch this week before ${closesAt.toLocaleString()}. You can open each film page to read the synopsis before voting.`,
+          pt: `A votação está aberta. Escolhe o filme que queres que todos vejam esta semana antes de ${closesAt.toLocaleString()}. Podes abrir a página de cada filme para ler a sinopse antes de votar.`,
+        },
+        undefined,
+        {
+          actionLabel: {
+            en: 'Vote in Movie Club',
+            pt: 'Votar no Movie Club',
+          },
+          movies: createdDetails.candidates.map((candidate) => ({
+            title: candidate.title,
+            tmdbId: candidate.tmdbId,
+            releaseDate: candidate.releaseDate,
+            posterPath: candidate.posterPath,
+            overview: candidate.overview,
+            voteCount: candidate.votes,
+          })),
+        }
+      );
     }
     return res.status(201).json({ session: createdDetails });
   } catch (error) {
@@ -431,7 +496,25 @@ movieClubRoutes.post('/sessions/:sessionId/select', async (req, res, next) => {
     session.selectedMedia = candidate.media;
     await getRepository(MovieClubSession).save(session);
     const selectedMovie = await movieDetails(candidate.media, req.locale);
-    await sendMovieClubEmail(`Movie Club winner: ${selectedMovie.title}`, `The votes are in — ${selectedMovie.title} is the Film of the Week! ${requesterText(selectedMovie)} Watch it on Plex and join the Movie Club discussion in Seerr+.`);
+    await sendMovieClubEmail(
+      {
+        en: `Movie Club winner: ${selectedMovie.title}`,
+        pt: `Vencedor do Movie Club: ${selectedMovie.title}`,
+      },
+      {
+        en: `The votes are in. ${selectedMovie.title} is the Film of the Week. ${requesterText(selectedMovie)} Watch it on Plex, read the synopsis in Seerr+, and join the Movie Club discussion.`,
+        pt: `Os votos estão fechados. ${selectedMovie.title} é o Filme da Semana. ${requesterText(selectedMovie, true)} Vê no Plex, lê a sinopse no Seerr+ e junta-te à conversa do Movie Club.`,
+      },
+      undefined,
+      {
+        actionLabel: {
+          en: 'Open Film of the Week',
+          pt: 'Abrir Filme da Semana',
+        },
+        highlightMovie: toEmailMovie(selectedMovie),
+        movies: [toEmailMovie(selectedMovie)],
+      }
+    );
     return res.status(204).send();
   } catch (error) {
     return next({ status: 500, message: error instanceof Error ? error.message : String(error) });
@@ -558,7 +641,23 @@ movieClubRoutes.patch('/sessions/:sessionId', async (req, res, next) => {
             [session.id, user.id]
           );
         }
-        await sendMovieClubEmail('Movie Club: you are choosing this week\'s films', `You have been selected as a Movie Club responsible user. Please open Seerr+ and choose exactly four films from the community requests before ${session.closesAt.toLocaleString()}.`, newlyAssigned);
+        await sendMovieClubEmail(
+          {
+            en: 'Movie Club: you are choosing this week\'s films',
+            pt: 'Movie Club: vais escolher os filmes desta semana',
+          },
+          {
+            en: `You have been selected as a Movie Club responsible user. Open Seerr+ and choose exactly four films from the community requests before ${session.closesAt.toLocaleString()}.`,
+            pt: `Foste selecionado como responsável do Movie Club. Abre o Seerr+ e escolhe exatamente quatro filmes da lista da comunidade antes de ${session.closesAt.toLocaleString()}.`,
+          },
+          newlyAssigned,
+          {
+            actionLabel: {
+              en: 'Choose the Movie Club films',
+              pt: 'Escolher os filmes do Movie Club',
+            },
+          }
+        );
       }
     }
 
@@ -581,7 +680,31 @@ movieClubRoutes.patch('/sessions/:sessionId', async (req, res, next) => {
         (wasScheduled && startImmediately))
     ) {
       const openedDetails = await serializeSession(updated, req.user?.id, req.locale);
-      await sendMovieClubEmail('Movie Club voting is now open', `This week\'s Movie Club candidates are: ${openedDetails.candidates.map((candidate) => candidate.title).join(', ')}. Cast your vote in Seerr+ before ${session.closesAt.toLocaleString()}.`);
+      await sendMovieClubEmail(
+        {
+          en: 'Movie Club voting is now open',
+          pt: 'A votação do Movie Club já está aberta',
+        },
+        {
+          en: `Voting is open. Pick the film you want everyone to watch this week before ${session.closesAt.toLocaleString()}. You can open each film page to read the synopsis before voting.`,
+          pt: `A votação está aberta. Escolhe o filme que queres que todos vejam esta semana antes de ${session.closesAt.toLocaleString()}. Podes abrir a página de cada filme para ler a sinopse antes de votar.`,
+        },
+        undefined,
+        {
+          actionLabel: {
+            en: 'Vote in Movie Club',
+            pt: 'Votar no Movie Club',
+          },
+          movies: openedDetails.candidates.map((candidate) => ({
+            title: candidate.title,
+            tmdbId: candidate.tmdbId,
+            releaseDate: candidate.releaseDate,
+            posterPath: candidate.posterPath,
+            overview: candidate.overview,
+            voteCount: candidate.votes,
+          })),
+        }
+      );
       session.startNotificationSentAt = new Date();
       await repository.save(session);
     }
@@ -616,7 +739,25 @@ movieClubRoutes.post('/sessions/:sessionId/resolve', async (req, res, next) => {
       session.selectedMedia = leaders[0].media;
       await repository.save(session);
       const selectedMovie = await movieDetails(leaders[0].media, req.locale);
-      await sendMovieClubEmail(`Movie Club winner: ${selectedMovie.title}`, `The votes are in — ${selectedMovie.title} is the Film of the Week with ${topVotes} votes! ${requesterText(selectedMovie)} Watch it on Plex and join the Movie Club discussion in Seerr+.`);
+      await sendMovieClubEmail(
+        {
+          en: `Movie Club winner: ${selectedMovie.title}`,
+          pt: `Vencedor do Movie Club: ${selectedMovie.title}`,
+        },
+        {
+          en: `The votes are in. ${selectedMovie.title} is the Film of the Week with ${topVotes} votes. ${requesterText(selectedMovie)} Watch it on Plex, read the synopsis in Seerr+, and join the Movie Club discussion.`,
+          pt: `Os votos estão fechados. ${selectedMovie.title} é o Filme da Semana com ${topVotes} votos. ${requesterText(selectedMovie, true)} Vê no Plex, lê a sinopse no Seerr+ e junta-te à conversa do Movie Club.`,
+        },
+        undefined,
+        {
+          actionLabel: {
+            en: 'Open Film of the Week',
+            pt: 'Abrir Filme da Semana',
+          },
+          highlightMovie: toEmailMovie(selectedMovie, topVotes),
+          movies: [toEmailMovie(selectedMovie, topVotes)],
+        }
+      );
       return res.json({ tie: false, winner: selectedMovie });
     }
     const lowestVotes = Math.min(...ranked.map((candidate) => candidate.votes.length));
@@ -627,7 +768,29 @@ movieClubRoutes.post('/sessions/:sessionId/resolve', async (req, res, next) => {
     await getRepository(MovieClubVote).delete({ session: { id: session.id } });
     session.closesAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
     await repository.save(session);
-    await sendMovieClubEmail('Movie Club tie-break: voting extended', 'This week\'s vote ended in a tie. The previous votes have been cleared, the lowest-ranked candidate has been removed, and voting is open again for another 24 hours. Please return to Seerr+ and cast your new vote.');
+    const remainingMovies = await Promise.all(
+      ranked
+        .filter((candidate) => candidate.id !== interestCounts[0].candidate.id)
+        .map((candidate) => movieDetails(candidate.media, req.locale))
+    );
+    await sendMovieClubEmail(
+      {
+        en: 'Movie Club tie-break: voting extended',
+        pt: 'Desempate do Movie Club: votação prolongada',
+      },
+      {
+        en: 'This week\'s vote ended in a tie. The previous votes have been cleared, the lowest-ranked candidate has been removed, and voting is open again for another 24 hours. Open the remaining film pages to read the synopses and cast your new vote.',
+        pt: 'A votação desta semana terminou empatada. Os votos anteriores foram limpos, o candidato com menos votos foi removido e a votação está novamente aberta por mais 24 horas. Abre as páginas dos filmes restantes, lê as sinopses e vota novamente.',
+      },
+      undefined,
+      {
+        actionLabel: {
+          en: 'Vote again in Movie Club',
+          pt: 'Votar novamente no Movie Club',
+        },
+        movies: remainingMovies.map((movie) => toEmailMovie(movie, 0)),
+      }
+    );
     return res.json({ tie: true, closesAt: session.closesAt });
   } catch (error) {
     return next({ status: 500, message: error instanceof Error ? error.message : String(error) });

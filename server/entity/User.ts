@@ -4,6 +4,7 @@ import { getRepository } from '@server/datasource';
 import { Watchlist } from '@server/entity/Watchlist';
 import type { QuotaResponse } from '@server/interfaces/api/userInterfaces';
 import PreparedEmail from '@server/lib/email';
+import { getEmailLabels } from '@server/lib/email/labels';
 import type { PermissionCheckOptions } from '@server/lib/permissions';
 import { Permission, hasPermission } from '@server/lib/permissions';
 import { getSettings } from '@server/lib/settings';
@@ -207,6 +208,7 @@ export class User {
     await this.setPassword(password);
 
     const { applicationTitle, applicationUrl } = getSettings().main;
+    const labels = getEmailLabels(this.settings?.locale);
     try {
       logger.info(`Sending generated password email for ${this.email}`, {
         label: 'User Management',
@@ -222,7 +224,9 @@ export class User {
           password: password,
           applicationUrl,
           applicationTitle,
+          labels,
           recipientName: this.username,
+          recipientEmail: this.email,
         },
       });
     } catch (e) {
@@ -244,6 +248,7 @@ export class User {
 
     const { applicationTitle, applicationUrl } = getSettings().main;
     const resetPasswordLink = `${applicationUrl}/resetpassword/${guid}`;
+    const labels = getEmailLabels(this.settings?.locale);
 
     try {
       logger.info(`Sending reset password email for ${this.email}`, {
@@ -259,6 +264,7 @@ export class User {
           resetPasswordLink,
           applicationUrl,
           applicationTitle,
+          labels,
           recipientName: this.displayName,
           recipientEmail: this.email,
         },

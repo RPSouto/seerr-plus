@@ -5,6 +5,11 @@ import { User } from '@server/entity/User';
 import { defineMessages, getIntl } from '@server/i18n';
 import globalMessages from '@server/i18n/globalMessages';
 import PreparedEmail from '@server/lib/email';
+import {
+  getEmailLabels,
+  isPortugueseLocale,
+  type EmailLabels,
+} from '@server/lib/email/labels';
 import type { NotificationAgentEmail } from '@server/lib/settings';
 import { NotificationAgentKey, getSettings } from '@server/lib/settings';
 import logger from '@server/logger';
@@ -39,9 +44,9 @@ const messages = defineMessages('notifications.agents.email', {
   autoApproved4k:
     'A new request for the following {mediaType} in 4K has been automatically approved:',
   availableRequest:
-    'Your request for the following {mediaType} is now available:',
+    'Good news: your requested {mediaType} is now available in Plex. Open it in {applicationTitle} to read the synopsis, check the details, and start watching:',
   availableRequest4k:
-    'Your request for the following {mediaType} in 4K is now available:',
+    'Good news: your requested {mediaType} is now available in Plex in 4K. Open it in {applicationTitle} to read the synopsis, check the details, and start watching:',
   declinedRequest: 'Your request for the following {mediaType} was declined:',
   declinedRequest4k:
     'Your request for the following {mediaType} in 4K was declined:',
@@ -58,6 +63,66 @@ const messages = defineMessages('notifications.agents.email', {
   issueReopened:
     'The {issueType} for the {mediaType} {subject} was reopened by {userName}.',
 });
+
+const portugueseMessages = {
+  issueType: 'problema de {type}',
+  issue: 'problema',
+  availableRequest:
+    'Boas notícias: o {mediaType} que pediste já está disponível no Plex. Abre-o no {applicationTitle} para ler a sinopse, ver os detalhes e começar a ver:',
+  availableRequest4k:
+    'Boas notícias: o {mediaType} que pediste já está disponível no Plex em 4K. Abre-o no {applicationTitle} para ler a sinopse, ver os detalhes e começar a ver:',
+  issueCreated:
+    'Foi reportado um novo {issueType} por {userName} para {mediaType} {subject}:',
+  issueComment:
+    '{userName} comentou no {issueType} de {mediaType} {subject}:',
+  issueResolved:
+    'O {issueType} de {mediaType} {subject} foi marcado como resolvido por {userName}!',
+  issueReopened:
+    'O {issueType} de {mediaType} {subject} foi reaberto por {userName}.',
+};
+
+const formatPortuguese = (
+  template: string,
+  values: Record<string, string | undefined>
+) =>
+  Object.entries(values).reduce(
+    (message, [key, value]) =>
+      message.replace(new RegExp(`\\{${key}\\}`, 'g'), value ?? ''),
+    template
+  );
+
+const getSubjectEvent = (
+  type: Notification,
+  labels: EmailLabels,
+  fallback?: string
+): string => {
+  switch (type) {
+    case Notification.MEDIA_PENDING:
+      return labels.mediaPendingSubject;
+    case Notification.MEDIA_APPROVED:
+      return labels.mediaApprovedSubject;
+    case Notification.MEDIA_AVAILABLE:
+      return labels.mediaAvailableSubject;
+    case Notification.MEDIA_FAILED:
+      return labels.mediaFailedSubject;
+    case Notification.MEDIA_DECLINED:
+      return labels.mediaDeclinedSubject;
+    case Notification.MEDIA_AUTO_APPROVED:
+      return labels.mediaAutoApprovedSubject;
+    case Notification.MEDIA_AUTO_REQUESTED:
+      return labels.mediaAutoRequestedSubject;
+    case Notification.ISSUE_CREATED:
+      return labels.issueCreatedSubject;
+    case Notification.ISSUE_COMMENT:
+      return labels.issueCommentSubject;
+    case Notification.ISSUE_RESOLVED:
+      return labels.issueResolvedSubject;
+    case Notification.ISSUE_REOPENED:
+      return labels.issueReopenedSubject;
+    default:
+      return fallback ?? Notification[type];
+  }
+};
 
 class EmailAgent
   extends BaseAgent<NotificationAgentEmail>
@@ -96,6 +161,8 @@ class EmailAgent
     locale?: AvailableLocale
   ): EmailOptions | undefined {
     const intl = getIntl(locale);
+    const isPortuguese = isPortugueseLocale(locale);
+    const labels = getEmailLabels(locale);
     const settings = getSettings();
     const { applicationUrl, applicationTitle } = settings.main;
     const { embedPoster } = settings.notifications.agents.email;
@@ -117,6 +184,7 @@ class EmailAgent
           applicationUrl,
           applicationTitle,
           logoUrl,
+          labels,
           recipientName,
           recipientEmail,
         },
@@ -125,8 +193,12 @@ class EmailAgent
 
     const mediaType = payload.media
       ? payload.media.mediaType === MediaType.MOVIE
-        ? intl.formatMessage(globalMessages.movie)
-        : intl.formatMessage(globalMessages.series)
+        ? isPortuguese
+          ? 'filme'
+          : intl.formatMessage(globalMessages.movie)
+        : isPortuguese
+          ? 'série'
+          : intl.formatMessage(globalMessages.series)
       : undefined;
     const is4k = payload.request?.is4k;
 
@@ -159,10 +231,17 @@ class EmailAgent
           );
           break;
         case Notification.MEDIA_AVAILABLE:
-          body = intl.formatMessage(
-            is4k ? messages.availableRequest4k : messages.availableRequest,
-            { mediaType }
-          );
+          body = isPortuguese
+            ? formatPortuguese(
+                is4k
+                  ? portugueseMessages.availableRequest4k
+                  : portugueseMessages.availableRequest,
+                { applicationTitle, mediaType }
+              )
+            : intl.formatMessage(
+                is4k ? messages.availableRequest4k : messages.availableRequest,
+                { applicationTitle, mediaType }
+              );
           break;
         case Notification.MEDIA_DECLINED:
           body = intl.formatMessage(
@@ -193,13 +272,14 @@ class EmailAgent
           to: recipientEmail,
         },
         locals: {
-          event: payload.event,
+          event: getSubjectEvent(type, labels, payload.event),
           body,
           mediaName: payload.subject,
           mediaExtra: payload.extra ?? [],
           imageUrl: embedPoster ? payload.image : undefined,
           timestamp: new Date().toTimeString(),
           requestedBy: payload.request.requestedBy.displayName,
+          labels,
           actionUrl: applicationUrl
             ? `${applicationUrl}/${payload.media?.mediaType}/${payload.media?.tmdbId}`
             : undefined,
@@ -213,45 +293,79 @@ class EmailAgent
     } else if (payload.issue) {
       const issueType =
         payload.issue && payload.issue.issueType !== IssueType.OTHER
-          ? intl.formatMessage(messages.issueType, {
-              type: IssueTypeName[payload.issue.issueType].toLowerCase(),
-            })
-          : intl.formatMessage(messages.issue);
+          ? isPortuguese
+            ? formatPortuguese(portugueseMessages.issueType, {
+                type: IssueTypeName[payload.issue.issueType].toLowerCase(),
+              })
+            : intl.formatMessage(messages.issueType, {
+                type: IssueTypeName[payload.issue.issueType].toLowerCase(),
+              })
+          : isPortuguese
+            ? portugueseMessages.issue
+            : intl.formatMessage(messages.issue);
 
       let body = '';
 
       switch (type) {
         case Notification.ISSUE_CREATED:
-          body = intl.formatMessage(messages.issueCreated, {
-            issueType,
-            userName: payload.issue.createdBy.displayName,
-            mediaType,
-            subject: payload.subject,
-          });
+          body = isPortuguese
+            ? formatPortuguese(portugueseMessages.issueCreated, {
+                issueType,
+                userName: payload.issue.createdBy.displayName,
+                mediaType,
+                subject: payload.subject,
+              })
+            : intl.formatMessage(messages.issueCreated, {
+                issueType,
+                userName: payload.issue.createdBy.displayName,
+                mediaType,
+                subject: payload.subject,
+              });
           break;
         case Notification.ISSUE_COMMENT:
-          body = intl.formatMessage(messages.issueComment, {
-            userName: payload.comment?.user.displayName,
-            issueType,
-            mediaType,
-            subject: payload.subject,
-          });
+          body = isPortuguese
+            ? formatPortuguese(portugueseMessages.issueComment, {
+                userName: payload.comment?.user.displayName,
+                issueType,
+                mediaType,
+                subject: payload.subject,
+              })
+            : intl.formatMessage(messages.issueComment, {
+                userName: payload.comment?.user.displayName,
+                issueType,
+                mediaType,
+                subject: payload.subject,
+              });
           break;
         case Notification.ISSUE_RESOLVED:
-          body = intl.formatMessage(messages.issueResolved, {
-            issueType,
-            userName: payload.issue.modifiedBy?.displayName,
-            mediaType,
-            subject: payload.subject,
-          });
+          body = isPortuguese
+            ? formatPortuguese(portugueseMessages.issueResolved, {
+                issueType,
+                userName: payload.issue.modifiedBy?.displayName,
+                mediaType,
+                subject: payload.subject,
+              })
+            : intl.formatMessage(messages.issueResolved, {
+                issueType,
+                userName: payload.issue.modifiedBy?.displayName,
+                mediaType,
+                subject: payload.subject,
+              });
           break;
         case Notification.ISSUE_REOPENED:
-          body = intl.formatMessage(messages.issueReopened, {
-            issueType,
-            userName: payload.issue.modifiedBy?.displayName,
-            mediaType,
-            subject: payload.subject,
-          });
+          body = isPortuguese
+            ? formatPortuguese(portugueseMessages.issueReopened, {
+                issueType,
+                userName: payload.issue.modifiedBy?.displayName,
+                mediaType,
+                subject: payload.subject,
+              })
+            : intl.formatMessage(messages.issueReopened, {
+                issueType,
+                userName: payload.issue.modifiedBy?.displayName,
+                mediaType,
+                subject: payload.subject,
+              });
           break;
       }
 
@@ -261,7 +375,7 @@ class EmailAgent
           to: recipientEmail,
         },
         locals: {
-          event: payload.event,
+          event: getSubjectEvent(type, labels, payload.event),
           body,
           issueDescription: payload.message,
           issueComment: payload.comment?.message,
@@ -275,6 +389,7 @@ class EmailAgent
           applicationUrl,
           applicationTitle,
           logoUrl,
+          labels,
           recipientName,
           recipientEmail,
         },

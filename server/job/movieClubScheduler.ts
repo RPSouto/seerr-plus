@@ -3,7 +3,10 @@ import { getRepository } from '@server/datasource';
 import MovieClubSession, {
   MovieClubSessionStatus,
 } from '@server/entity/MovieClubSession';
-import { sendMovieClubEmail } from '@server/lib/seerrplus/movieClubNotifications';
+import {
+  MovieClubEmailMovie,
+  sendMovieClubEmail,
+} from '@server/lib/seerrplus/movieClubNotifications';
 import logger from '@server/logger';
 import schedule from 'node-schedule';
 import { IsNull, LessThanOrEqual } from 'typeorm';
@@ -13,17 +16,36 @@ let running = false;
 
 const announceVoting = async (session: MovieClubSession) => {
   const tmdb = new TheMovieDb();
-  const titles = await Promise.all(
+  const movies = await Promise.all(
     session.candidates.map(async (candidate) => {
       const movie = await tmdb.getMovie({ movieId: candidate.media.tmdbId });
-      return movie.title;
+      return {
+        title: movie.title,
+        tmdbId: movie.id,
+        releaseDate: movie.release_date,
+        posterPath: movie.poster_path,
+        overview: movie.overview,
+        voteCount: candidate.votes?.length ?? 0,
+      } satisfies MovieClubEmailMovie;
     })
   );
   await sendMovieClubEmail(
-    'Movie Club voting is now open',
-    `This week's Movie Club candidates are: ${titles.join(
-      ', '
-    )}. Cast your vote in Seerr+ before ${session.closesAt.toLocaleString()}.`
+    {
+      en: 'Movie Club voting is now open',
+      pt: 'A votação do Movie Club já está aberta',
+    },
+    {
+      en: `Voting is open. Pick the film you want everyone to watch this week before ${session.closesAt.toLocaleString()}. You can open each film page to read the synopsis before voting.`,
+      pt: `A votação está aberta. Escolhe o filme que queres que todos vejam esta semana antes de ${session.closesAt.toLocaleString()}. Podes abrir a página de cada filme para ler a sinopse antes de votar.`,
+    },
+    undefined,
+    {
+      actionLabel: {
+        en: 'Vote in Movie Club',
+        pt: 'Votar no Movie Club',
+      },
+      movies,
+    }
   );
 };
 
