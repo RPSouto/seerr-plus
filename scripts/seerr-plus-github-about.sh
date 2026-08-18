@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repository="${1:-RPSouto/seerr-plus}"
-description='Seerr Plus Edition acrescenta pedidos colaborativos, utilizadores interessados, notificações partilhadas e gestão de remoções ao Seerr, com identidade visual preta e integração Plex/Radarr/Sonarr.'
+description='Seerr Plus acrescenta pedidos colaborativos, utilizadores interessados, notificações partilhadas e gestão de remoções ao Seerr, com identidade visual preta e integração Plex/Radarr/Sonarr.'
 
 if ! command -v gh >/dev/null 2>&1; then
   echo 'GitHub CLI (gh) is required. Install it and run: gh auth login' >&2

@@ -61,7 +61,6 @@ const MovieClubSuggestButton = ({
       title={intl.formatMessage(messages.count, { count: data?.count ?? 0 })}
     >
       <LightBulbIcon />
-      {intl.formatMessage(data?.suggested ? messages.suggested : messages.suggest)}
     </Button>
   );
 };

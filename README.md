@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./public/logo_full.svg" alt="Seerr Plus Edition" width="420">
+  <img src="./public/logo_full.svg" alt="Seerr Plus" width="420">
 </p>
 
 <p align="center">
@@ -7,16 +7,16 @@
   Collaborative Plex requests, shared media management, and a weekly Movie Club.
 </p>
 
-# Seerr Plus Edition
+# Seerr Plus
 
-Seerr Plus Edition is an independent fork of
+Seerr Plus is an independent fork of
 [Seerr](https://github.com/seerr-team/seerr) for private Plex communities. It
 keeps Seerr's acquisition workflow while adding collaboration around requests,
 availability, library cleanup, and choosing a Film of the Week.
 
 The current release is **seerr-plus-v1.8.90**, based on **Seerr v3.4.1**.
 
-## What Plus Edition adds
+## What Plus adds
 
 ### Shared requests and interests
 
@@ -107,10 +107,10 @@ The current release is **seerr-plus-v1.8.90**, based on **Seerr v3.4.1**.
 - The panel shows when the last successful update occurred and retains the last
   values if Tautulli is temporarily unavailable.
 
-### Plus Edition interface
+### Plus interface
 
-- A black visual identity distinguishes Plus Edition from upstream Seerr.
-- The sidebar and application branding display **Plus Edition**.
+- A black visual identity distinguishes Plus from upstream Seerr.
+- The sidebar and application branding display **Plus**.
 - New controls are responsive on desktop and mobile.
 - New interface messages are available in all Seerr locale catalogs, with
   native Portuguese and English text and English fallback text elsewhere.
@@ -180,7 +180,7 @@ bash scripts/seerr-plus-release.sh seerr-plus-v1.8.50
 
 ## Upstream and license
 
-Seerr Plus Edition is based on Seerr but is not an official product of the
+Seerr Plus is based on Seerr but is not an official product of the
 Seerr team.
 
 - Upstream project: [seerr-team/seerr](https://github.com/seerr-team/seerr)

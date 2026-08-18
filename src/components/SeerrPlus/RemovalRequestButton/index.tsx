@@ -125,9 +125,6 @@ const RemovalRequestButton = ({
           onClick={() => setShow(true)}
         >
           <TrashIcon />
-          {isAdmin && (
-            <span>{intl.formatMessage(messages.removeOrRequest)}</span>
-          )}
         </Button>
       </Tooltip>
       <Transition show={show}>
@@ -200,3 +197,4 @@ const RemovalRequestButton = ({
 };
 
 export default RemovalRequestButton;
+

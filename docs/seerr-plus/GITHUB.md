@@ -2,7 +2,7 @@
 
 ## Repository description (About)
 
-Seerr Plus Edition acrescenta pedidos colaborativos, utilizadores interessados, notificações partilhadas e gestão de remoções ao Seerr, com identidade visual preta e integração Plex/Radarr/Sonarr.
+Seerr Plus acrescenta pedidos colaborativos, utilizadores interessados, notificações partilhadas e gestão de remoções ao Seerr, com identidade visual preta e integração Plex/Radarr/Sonarr.
 
 ## Suggested topics
 
@@ -10,5 +10,5 @@ Seerr Plus Edition acrescenta pedidos colaborativos, utilizadores interessados, 
 
 ## Project name
 
-**Seerr Plus Edition**
+**Seerr Plus**
 
