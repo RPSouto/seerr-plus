@@ -57,7 +57,7 @@ const localizedLabels = (portuguese: boolean) =>
         readSynopsis: 'Ler sinopse no Seerr+',
         fallbackAction: 'Abrir Movie Club',
         openMovieClub: 'Abrir Movie Club',
-        footer: 'Este email foi enviado pelo Seerr+ Plus Edition.',
+        footer: 'Este email foi enviado pelo Seerr+ Plus.',
       }
     : {
         greeting: 'Hi',
@@ -68,7 +68,7 @@ const localizedLabels = (portuguese: boolean) =>
         readSynopsis: 'Read synopsis in Seerr+',
         fallbackAction: 'Open Movie Club',
         openMovieClub: 'Open Movie Club',
-        footer: 'This email was sent by Seerr+ Plus Edition.',
+        footer: 'This email was sent by Seerr+ Plus.',
       };
 
 export const sendMovieClubEmail = async (

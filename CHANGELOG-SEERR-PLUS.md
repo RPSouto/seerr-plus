@@ -57,7 +57,7 @@
 - Send Media Available email copy in PT Portugal for users whose selected locale starts with `pt`, with English as fallback.
 - Localize common template labels such as greeting, Requested By, Open, Open in, View Issue, reset-password actions, account-information subjects, and generated-password copy.
 - Keep request/issue/test/password/generated-password templates rendering through one shared PT/EN labels helper.
-- Preserve upstream translation catalogs while adding the Seerr+ PT Portugal fallback needed for Plus Edition deployments.
+- Preserve upstream translation catalogs while adding the Seerr+ PT Portugal fallback needed for Plus deployments.
 
 ## seerr-plus-v1.8.45
 
@@ -69,7 +69,7 @@
 
 ## seerr-plus-v1.8.40
 
-- Add a dedicated Plus Edition Movie Club email template.
+- Add a dedicated Plus Movie Club email template.
 - Include movie cards with poster artwork, release date, synopsis, vote count, requester names where appropriate, and direct Seerr+ movie links.
 - Improve responsible-user, voting-open, winner, scheduled-vote, and tie-break Movie Club email copy.
 - Keep Discord, Pushbullet, and Pushover Movie Club notifications on the existing compact text format with the Movie Club link.
@@ -118,7 +118,7 @@
 
 ## seerr-plus-v1.8.5
 
-- Move the Plus Edition badge to the login footer so it never overlaps the Seerr logo.
+- Move the Plus badge to the login footer so it never overlaps the Seerr logo.
 - Keep the badge visible and centered across desktop and mobile login layouts.
 - Enforce release patch numbers that are multiples of 5 in the publishing script and documentation.
 
@@ -131,7 +131,7 @@
 
 ## seerr-plus-v1.8.0
 
-- Display the Plus Edition badge on the login page.
+- Display the Plus badge on the login page.
 - Add the Movie Club preference to each user's Discord, Pushbullet, and Pushover notification settings.
 - Deliver Movie Club alerts to opted-in personal Pushbullet and Pushover accounts.
 - Publish Movie Club alerts to the configured Discord channel and mention opted-in users.
@@ -247,7 +247,7 @@
 ## seerr-plus-v1.0.5
 
 - Translate the public repository README into English.
-- Keep the README focused exclusively on Plus Edition additions compared with the original Seerr.
+- Keep the README focused exclusively on Plus additions compared with the original Seerr.
 
 ## seerr-plus-v1.0.4
 
@@ -257,7 +257,7 @@
 
 ## seerr-plus-v1.0.3
 
-- Replace the upstream-style landing README with a focused Plus Edition project page.
+- Replace the upstream-style landing README with a focused Plus project page.
 - Document only the functionality added or changed in relation to the original Seerr.
 - Add the GitHub repository description, suggested topics and Plex Movie Club announcement text.
 - Add an optional helper to configure the GitHub About description and repository topics.
@@ -283,6 +283,6 @@
 - Available content supports user removal requests with reasons, comments and administrator approval/rejection.
 - Approved removals delete the title and files through Radarr/Sonarr.
 - Removal controls and emails are limited to administrators or users interested in the matching standard/4K edition.
-- Black Plus Edition identity, localized Seerr+ controls and upstream-compatible internal middleware.
+- Black Plus identity, localized Seerr+ controls and upstream-compatible internal middleware.
 - Plex collection synchronization event/adapter scaffold, disabled until an adapter is registered.
 - SQLite and PostgreSQL migrations preserve existing Seerr users and requests.

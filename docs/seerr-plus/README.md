@@ -25,7 +25,7 @@ deduplicated interested-user list.
 
 ## Email content
 
-Movie Club email notifications use a Plus Edition template with clearer copy,
+Movie Club email notifications use a Plus template with clearer copy,
 the app action link, candidate film cards, poster artwork, release dates,
 synopses, vote counts, and direct links to each Seerr+ movie page when the
 public application URL is configured.
@@ -39,7 +39,7 @@ Media Available emails keep the upstream media-request template but now make it
 clear that users can open the title page to read the synopsis, check details,
 and start watching.
 
-Core Seerr email templates also receive the simple Plus Edition language rule:
+Core Seerr email templates also receive the simple Plus language rule:
 PT Portugal for selected locales beginning with `pt`, English for all other
 locales. This covers Media Available copy, greetings, Requested By labels,
 issue buttons, request/issue email subjects, test emails, generated-password

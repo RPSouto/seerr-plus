@@ -31,9 +31,9 @@ Creation, comments, resolution and reopening notifications are delivered only
 to administrators and users interested in the matching edition, subject to
 their Issue notification preferences.
 
-## Plus Edition identity and localization
+## Plus identity and localization
 
-The interface uses the black Plus Edition identity to distinguish it from
+The interface uses the black Plus identity to distinguish it from
 upstream Seerr. New controls have locale keys in every Seerr catalog, with
 complete Portuguese and English strings and English fallback strings in the
 remaining catalogs.
