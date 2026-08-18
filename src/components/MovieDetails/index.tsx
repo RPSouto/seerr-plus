@@ -596,7 +596,7 @@ const MovieDetails = ({ movie }: MovieDetailsProps) => {
                 ))}
           </span>
         </div>
-        <div className="media-actions">
+        <div className="media-actions flex-wrap">
           {showHideButton &&
             data?.mediaInfo?.status !== MediaStatus.PROCESSING &&
             data?.mediaInfo?.status !== MediaStatus.AVAILABLE &&
@@ -651,7 +651,7 @@ const MovieDetails = ({ movie }: MovieDetailsProps) => {
                 )}
               </>
             )}
-          <div className="z-20">
+          <div className="z-20 flex w-full justify-center sm:w-auto sm:justify-start">
             <PlayButton links={mediaLinks} />
           </div>
           <RequestButton
@@ -660,6 +660,7 @@ const MovieDetails = ({ movie }: MovieDetailsProps) => {
             tmdbId={data.id}
             onUpdate={() => revalidate()}
           />
+          <div className="flex w-full items-center justify-center sm:w-auto sm:justify-start">
           <MovieClubSuggestButton
             mediaId={data.mediaInfo?.id}
             available={
@@ -737,6 +738,7 @@ const MovieDetails = ({ movie }: MovieDetailsProps) => {
                 </Button>
               </Tooltip>
             )}
+          </div>
           <RequestInterestUsers
             requestId={data.mediaInfo?.requests.find(
               (request) =>

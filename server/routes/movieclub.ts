@@ -169,7 +169,7 @@ const serializeSession = async (
       : null,
     candidates,
     totalVotes: (session.votes ?? []).length,
-    myVoteCandidateId: session.votes?.find((vote) => vote.user.id === userId)?.candidate.id ?? null,
+    myVoteCandidateId:session.votes?.find((vote) => vote.user?.id === userId)?.candidate?.id ?? null,
     curators: (session.curators ?? []).map((curator) => ({
       id: curator.user.id,
       displayName: curator.user.displayName,
@@ -286,6 +286,7 @@ movieClubRoutes.get('/history', async (req, res, next) => {
       .leftJoinAndSelect('candidate.votes', 'candidateVote')
       .leftJoinAndSelect('session.votes', 'vote')
       .leftJoinAndSelect('vote.user', 'voteUser')
+      .leftJoinAndSelect('vote.candidate', 'voteCandidate')
       .leftJoinAndSelect('session.curators', 'curator')
       .leftJoinAndSelect('curator.user', 'curatorUser')
       .where('session.selectedMediaId IS NOT NULL')

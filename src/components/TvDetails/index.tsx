@@ -611,7 +611,7 @@ const TvDetails = ({ tv }: TvDetailsProps) => {
                 ))}
           </span>
         </div>
-        <div className="media-actions">
+        <div className="media-actions flex-wrap">
           {showHideButton &&
             data?.mediaInfo?.status !== MediaStatus.PROCESSING &&
             data?.mediaInfo?.status !== MediaStatus.AVAILABLE &&
@@ -666,7 +666,7 @@ const TvDetails = ({ tv }: TvDetailsProps) => {
                 )}
               </>
             )}
-          <div className="z-20">
+          <div className="z-20 flex w-full justify-center sm:w-auto sm:justify-start">
             <PlayButton links={mediaLinks} />
           </div>
           <RequestButton
@@ -677,6 +677,7 @@ const TvDetails = ({ tv }: TvDetailsProps) => {
             isShowComplete={isComplete}
             is4kShowComplete={is4kComplete}
           />
+          <div className="flex w-full items-center justify-center sm:w-auto sm:justify-start">
           <RemovalRequestButton
             mediaId={data.mediaInfo?.id}
             available={
@@ -748,6 +749,7 @@ const TvDetails = ({ tv }: TvDetailsProps) => {
               </Button>
             </Tooltip>
           )}
+          </div>
           <RequestInterestUsers mediaId={data.mediaInfo?.id} />
         </div>
       </div>
