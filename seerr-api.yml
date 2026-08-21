@@ -8512,6 +8512,24 @@ paths:
           description: Eligible Movie Club candidates
         '403':
           description: Administrator permission required
+  /seerrplus/movie-club/search:
+    get:
+      summary: Search available Plex movies for Movie Club voting
+      description: Returns available movie matches that can be manually added to a Movie Club vote.
+      tags:
+        - seerrplus
+      parameters:
+        - in: query
+          name: query
+          required: true
+          schema:
+            type: string
+            minLength: 2
+      responses:
+        '200':
+          description: Available Movie Club movie matches
+        '403':
+          description: Administrator permission required
   /seerrplus/movie-club/users:
     get:
       summary: List users that can be assigned as Movie Club curators

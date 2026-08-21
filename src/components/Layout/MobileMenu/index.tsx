@@ -253,11 +253,8 @@ const MobileMenu = ({
         leaveTo="opacity-0"
         className="fixed inset-0 z-50 flex items-end bg-black/70 px-4 pb-24 pt-8"
       >
-        <div className="w-full rounded-xl border border-gray-700 bg-gray-900 p-3 shadow-2xl">
-          <div className="mb-3 flex items-center justify-between">
-            <span className="font-semibold text-white">
-              Plex Library
-            </span>
+        <div className="w-full rounded-xl border border-gray-700 bg-gray-900 p-2 shadow-2xl">
+          <div className="mb-1 flex justify-end">
             <button
               type="button"
               className="rounded p-1 text-gray-300 hover:bg-gray-800 hover:text-white"

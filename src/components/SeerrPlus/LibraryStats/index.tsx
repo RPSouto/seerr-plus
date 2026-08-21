@@ -89,28 +89,25 @@ const LibraryStats = ({
         modal ? '' : 'mx-2 mb-3'
       }`}
     >
-      <div className="mb-2 flex items-center justify-between">
-        <span className="font-bold text-gray-100">
-          {intl.formatMessage(messages.title)}
-        </span>
-        <button
-          type="button"
-          className="rounded p-1 text-gray-400 transition hover:bg-gray-800 hover:text-white disabled:cursor-wait disabled:opacity-60"
-          onClick={refresh}
-          disabled={refreshing}
-          title={intl.formatMessage(messages.refresh)}
-          aria-label={intl.formatMessage(messages.refresh)}
-        >
-          <ArrowPathIcon
-            className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`}
-          />
-        </button>
-      </div>
       {data ? (
         <>
           <div className="mb-3 border-b border-gray-700 pb-3">
-            <div className="mb-2 font-semibold text-gray-100">
-              {intl.formatMessage(messages.nowStreaming)}
+            <div className="mb-2 flex items-center justify-between">
+              <span className="font-semibold text-gray-100">
+                {intl.formatMessage(messages.nowStreaming)}
+              </span>
+              <button
+                type="button"
+                className="rounded p-1 text-gray-400 transition hover:bg-gray-800 hover:text-white disabled:cursor-wait disabled:opacity-60"
+                onClick={refresh}
+                disabled={refreshing}
+                title={intl.formatMessage(messages.refresh)}
+                aria-label={intl.formatMessage(messages.refresh)}
+              >
+                <ArrowPathIcon
+                  className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`}
+                />
+              </button>
             </div>
             {data.currentStreams?.length ? (
               <div className="flex gap-2 overflow-x-auto pb-1">
