@@ -1,5 +1,6 @@
 import Badge from '@app/components/Common/Badge';
 import { menuMessages } from '@app/components/Layout/Sidebar';
+import LibraryStats from '@app/components/SeerrPlus/LibraryStats';
 import useClickOutside from '@app/hooks/useClickOutside';
 import { Permission, useUser } from '@app/hooks/useUser';
 import { Transition } from '@headlessui/react';
@@ -10,6 +11,7 @@ import {
   ExclamationTriangleIcon,
   EyeSlashIcon,
   FilmIcon,
+  PlayCircleIcon,
   SparklesIcon,
   TrophyIcon,
   TvIcon,
@@ -31,6 +33,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { cloneElement, useEffect, useRef, useState, type JSX } from 'react';
 import { useIntl } from 'react-intl';
+import useSWR from 'swr';
 
 interface MobileMenuProps {
   pendingRequestsCount: number;
@@ -60,8 +63,13 @@ const MobileMenu = ({
   const ref = useRef<HTMLDivElement>(null);
   const intl = useIntl();
   const [isOpen, setIsOpen] = useState(false);
+  const [isStatsOpen, setIsStatsOpen] = useState(false);
   const { hasPermission } = useUser();
   const router = useRouter();
+  const { data: libraryStats } = useSWR<{ streams?: number; configured?: boolean }>(
+    '/api/v1/tautulli-stats',
+    { refreshInterval: 60 * 1000 }
+  );
   useClickOutside(ref, () => {
     setTimeout(() => {
       if (isOpen) {
@@ -234,10 +242,38 @@ const MobileMenu = ({
           );
         })}
       </Transition>
+      <Transition
+        show={isStatsOpen}
+        as="div"
+        enter="transition duration-300"
+        enterFrom="opacity-0"
+        enterTo="opacity-100"
+        leave="transition duration-200"
+        leaveFrom="opacity-100"
+        leaveTo="opacity-0"
+        className="fixed inset-0 z-50 flex items-end bg-black/70 px-4 pb-24 pt-8"
+      >
+        <div className="w-full rounded-xl border border-gray-700 bg-gray-900 p-3 shadow-2xl">
+          <div className="mb-3 flex items-center justify-between">
+            <span className="font-semibold text-white">
+              Plex Library
+            </span>
+            <button
+              type="button"
+              className="rounded p-1 text-gray-300 hover:bg-gray-800 hover:text-white"
+              onClick={() => setIsStatsOpen(false)}
+            >
+              <XMarkIcon className="h-5 w-5" />
+            </button>
+          </div>
+          <LibraryStats modal onStreamOpen={() => setIsStatsOpen(false)} />
+        </div>
+      </Transition>
       <div className="padding-bottom-safe border-t border-gray-600 bg-gray-800/90 backdrop-blur">
         <div className="flex h-full items-center justify-between px-6 py-4 text-gray-100">
           {filteredLinks
-            .slice(0, filteredLinks.length === 5 ? 5 : 4)
+            .filter((link) => link.href !== '/requests')
+            .slice(0, 3)
             .map((link) => {
               const isActive =
                 router.pathname.match(link.activeRegExp) && !isOpen;
@@ -277,6 +313,27 @@ const MobileMenu = ({
                 </Link>
               );
             })}
+          {libraryStats?.configured !== false && (
+            <button
+              type="button"
+              className={`relative flex flex-col items-center space-y-1 ${
+                isStatsOpen ? 'text-indigo-500' : ''
+              }`}
+              onClick={() => setIsStatsOpen(true)}
+              aria-label="Plex streams"
+            >
+              <PlayCircleIcon className="h-6 w-6" />
+              {(libraryStats?.streams ?? 0) > 0 && (
+                <div className="absolute bottom-3 left-3">
+                  <Badge className="flex h-4 w-4 items-center justify-center border-indigo-500 bg-gradient-to-br from-indigo-600 to-purple-600 !px-[5px] !py-[7px] text-[8px]">
+                    {(libraryStats?.streams ?? 0) > 9
+                      ? '9+'
+                      : libraryStats?.streams}
+                  </Badge>
+                </div>
+              )}
+            </button>
+          )}
           {filteredLinks.length > 4 && filteredLinks.length !== 5 && (
             <button
               className={`flex flex-col items-center space-y-1 ${

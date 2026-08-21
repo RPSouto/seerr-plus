@@ -116,7 +116,21 @@ interface TautulliInfoResponse {
 
 interface TautulliActivity {
   stream_count?: number | string;
-  sessions?: unknown[];
+  sessions?: TautulliSession[];
+}
+
+interface TautulliSession {
+  full_title?: string;
+  grandparent_title?: string;
+  grandparent_rating_key?: number | string;
+  media_type?: string;
+  parent_rating_key?: number | string;
+  parent_title?: string;
+  rating_key?: number | string;
+  thumb?: string;
+  grandparent_thumb?: string;
+  parent_thumb?: string;
+  title?: string;
 }
 
 interface TautulliLibrary {
@@ -144,6 +158,14 @@ export interface TautulliServerStats {
   streams: number;
   movies: number;
   series: number;
+  currentStreams: TautulliCurrentStream[];
+}
+
+export interface TautulliCurrentStream {
+  title: string;
+  mediaType?: string;
+  ratingKey?: string;
+  thumb?: string;
 }
 
 class TautulliAPI {
@@ -203,6 +225,28 @@ class TautulliAPI {
         series: libraries
           .filter((library) => library.section_type.toLowerCase() === 'show')
           .reduce((total, library) => total + toCount(library.count), 0),
+        currentStreams: (activity.sessions ?? []).map((session) => ({
+          title:
+            session.full_title ??
+            session.grandparent_title ??
+            session.parent_title ??
+            session.title ??
+            'Now streaming',
+          mediaType: session.media_type,
+          ratingKey: String(
+            session.media_type === 'episode'
+              ? session.grandparent_rating_key ??
+                  session.parent_rating_key ??
+                  session.rating_key ??
+                  ''
+              : session.rating_key ??
+                  session.parent_rating_key ??
+                  session.grandparent_rating_key ??
+                  ''
+          ),
+          thumb:
+            session.thumb ?? session.grandparent_thumb ?? session.parent_thumb,
+        })),
       };
     } catch (e) {
       logger.error('Something went wrong fetching server stats from Tautulli', {
@@ -364,6 +408,34 @@ class TautulliAPI {
         `[Tautulli] Failed to fetch user watch history: ${e.message}`,
         { cause: e }
       );
+    }
+  }
+
+  public async getImage(image: string): Promise<{
+    data: Buffer;
+    contentType?: string;
+  }> {
+    try {
+      const response = await this.axios.get<ArrayBuffer>('/api/v2', {
+        params: {
+          cmd: 'pms_image_proxy',
+          img: image,
+        },
+        responseType: 'arraybuffer',
+      });
+
+      return {
+        data: Buffer.from(response.data),
+        contentType: response.headers['content-type'],
+      };
+    } catch (e) {
+      logger.error('Something went wrong fetching Tautulli image', {
+        label: 'Tautulli API',
+        errorMessage: e.message,
+      });
+      throw new Error(`[Tautulli] Failed to fetch image: ${e.message}`, {
+        cause: e,
+      });
     }
   }
 }
