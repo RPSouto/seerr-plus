@@ -41,7 +41,7 @@ import requestRoutes from './request';
 import searchRoutes from './search';
 import seerrPlusRoutes from './seerrplus';
 import serviceRoutes from './service';
-import { getTautulliStats } from './tautullistats';
+import { getTautulliStats, getTautulliStreamImage } from './tautullistats';
 import tvRoutes from './tv';
 import user from './user';
 
@@ -160,6 +160,11 @@ router.use('/search', isAuthenticated(), searchRoutes);
 router.use('/discover', isAuthenticated(), discoverRoutes);
 router.use('/request', isAuthenticated(), requestRoutes);
 router.get('/tautulli-stats', isAuthenticated(), getTautulliStats);
+router.get(
+  '/tautulli-stats/stream-image',
+  isAuthenticated(),
+  getTautulliStreamImage
+);
 router.use('/seerrplus', isAuthenticated(), seerrPlusRoutes);
 router.use('/watchlist', isAuthenticated(), watchlistRoutes);
 router.use('/blocklist', isAuthenticated(), blocklistRoutes);

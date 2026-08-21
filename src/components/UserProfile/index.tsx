@@ -1,3 +1,4 @@
+import Button from '@app/components/Common/Button';
 import ImageFader from '@app/components/Common/ImageFader';
 import LoadingSpinner from '@app/components/Common/LoadingSpinner';
 import PageTitle from '@app/components/Common/PageTitle';
@@ -18,6 +19,7 @@ import type {
 } from '@server/interfaces/api/userInterfaces';
 import type { MovieDetails } from '@server/models/Movie';
 import type { TvDetails } from '@server/models/Tv';
+import axios from 'axios';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useCallback, useEffect, useState } from 'react';
@@ -38,6 +40,11 @@ const messages = defineMessages('components.UserProfile', {
   localWatchlist: "{username}'s Watchlist",
   emptywatchlist:
     'Media added to your <PlexWatchlistSupportLink>Plex Watchlist</PlexWatchlistSupportLink> will appear here.',
+  resetQuota: 'Reset available requests',
+  resetQuotaConfirm:
+    'Reset this user request quota? Existing requests will stop counting against their quota.',
+  resetQuotaSuccess: 'Request quota was reset.',
+  resetQuotaFailed: 'Unable to reset request quota.',
 });
 
 type MediaTitle = MovieDetails | TvDetails;
@@ -63,7 +70,7 @@ const UserProfile = () => {
       ? `/api/v1/user/${user?.id}/requests?take=10&skip=0`
       : null
   );
-  const { data: quota } = useSWR<QuotaResponse>(
+  const { data: quota, mutate: mutateQuota } = useSWR<QuotaResponse>(
     user &&
       (user.id === currentUser?.id ||
         currentHasPermission(
@@ -125,6 +132,23 @@ const UserProfile = () => {
       : messages.localWatchlist,
     { username: user.displayName }
   );
+  const canManageQuota = currentHasPermission(
+    [Permission.MANAGE_USERS, Permission.MANAGE_REQUESTS],
+    { type: 'and' }
+  );
+
+  const resetQuota = async () => {
+    if (!user || !window.confirm(intl.formatMessage(messages.resetQuotaConfirm))) {
+      return;
+    }
+    try {
+      const response = await axios.post(`/api/v1/user/${user.id}/quota/reset`);
+      await mutateQuota(response.data.after, false);
+      window.alert(intl.formatMessage(messages.resetQuotaSuccess));
+    } catch {
+      window.alert(intl.formatMessage(messages.resetQuotaFailed));
+    }
+  };
 
   return (
     <>
@@ -147,11 +171,15 @@ const UserProfile = () => {
       <ProfileHeader user={user} />
       {quota &&
         (user.id === currentUser?.id ||
-          currentHasPermission(
-            [Permission.MANAGE_USERS, Permission.MANAGE_REQUESTS],
-            { type: 'and' }
-          )) && (
+          canManageQuota) && (
           <div className="relative z-40">
+            {canManageQuota && user.id !== currentUser?.id && (
+              <div className="mt-5 flex justify-end">
+                <Button buttonType="warning" onClick={resetQuota}>
+                  {intl.formatMessage(messages.resetQuota)}
+                </Button>
+              </div>
+            )}
             <dl className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-3">
               <div className="overflow-hidden rounded-lg bg-gray-800/50 px-4 py-5 shadow ring-1 ring-gray-700 sm:p-6">
                 <dt className="truncate text-sm font-bold text-gray-300">

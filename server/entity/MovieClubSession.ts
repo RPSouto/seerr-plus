@@ -34,6 +34,9 @@ export class MovieClubSession {
   @Column({ type: 'varchar', nullable: true })
   public whatsappUrl?: string | null;
 
+  @Column({ type: 'varchar', nullable: true })
+  public title?: string | null;
+
   @ManyToOne(() => Media, { nullable: true, eager: true, onDelete: 'SET NULL' })
   public selectedMedia?: Media | null;
 

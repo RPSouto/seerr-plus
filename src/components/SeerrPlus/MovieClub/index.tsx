@@ -22,10 +22,12 @@ type Candidate = {
   suggestedByMe?: boolean;
   interestedUserCount: number;
   interestedUsers: { id: number; displayName: string }[];
+  hasWonMovieClub?: boolean;
 };
 type Session = {
   id: number;
   status: number;
+  title?: string;
   startsAt?: string;
   closesAt: string;
   whatsappUrl?: string;
@@ -50,7 +52,7 @@ const messages = defineMessages('components.SeerrPlus.MovieClub', {
   highlightVoting:
     '{count} requested films available in Plex are waiting for your vote.',
   interested: 'Interested',
-  votes: '{count} votes',
+  votes: '{count, plural, one {# vote} other {# votes}}',
   selected: 'Selected',
   vote: 'Vote',
   noSynopsis: 'Synopsis unavailable.',
@@ -63,7 +65,7 @@ const messages = defineMessages('components.SeerrPlus.MovieClub', {
   createVote: "Create this week's vote",
   createHelp:
     'Choose between two and four movies from existing user requests that are already available in Plex. Movies with the most interested users appear first.',
-  interestedCount: '{count} interested',
+  interestedCount: '{count, plural, one {# interested} other {# interested}}',
   candidateStats: '{interested} int. · {suggestions} sug.',
   whatsappPlaceholder: 'WhatsApp discussion link (optional)',
   startVoting: 'Start voting',
@@ -106,6 +108,12 @@ const messages = defineMessages('components.SeerrPlus.MovieClub', {
   startNow: 'Start immediately',
   scheduledStart: 'Schedule start',
   scheduleVote: 'Schedule voting',
+  voteTitle: 'Vote title / theme',
+  voteTitlePlaceholder: 'Example: Horror classics, 90s action, hidden gems…',
+  manualSearch: 'Search a movie manually',
+  manualSearchPlaceholder: 'Search available Plex movies…',
+  previousWinner:
+    'This movie has already won Movie Club. You can still add it if you want.',
 });
 
 const poster = (path?: string) =>
@@ -256,6 +264,14 @@ const MovieClub = () => {
         }`
       : null
   );
+  const [manualSearch, setManualSearch] = useState('');
+  const { data: manualResults } = useSWR<{ results: Candidate[] }>(
+    canManage && manualSearch.trim().length >= 2
+      ? `/api/v1/seerrplus/movie-club/search?query=${encodeURIComponent(
+          manualSearch.trim()
+        )}`
+      : null
+  );
   const { data: users } = useSWR<{ results: ClubUser[] }>(
     isAdmin && (!session || isEditing)
       ? '/api/v1/seerrplus/movie-club/users'
@@ -271,6 +287,7 @@ const MovieClub = () => {
   const [startMode, setStartMode] = useState<'now' | 'scheduled'>('now');
   const [startsAt, setStartsAt] = useState('');
   const [whatsappUrl, setWhatsappUrl] = useState('');
+  const [voteTitle, setVoteTitle] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -296,6 +313,7 @@ const MovieClub = () => {
       setStartsAt(toLocalInput(session.startsAt));
       setStartMode(session.startsAt ? 'scheduled' : 'now');
       setWhatsappUrl(session.whatsappUrl ?? '');
+      setVoteTitle(session.title ?? '');
       setCuratorUserIds(session.curators.map((curator) => curator.id));
     }
   }, [session, isEditing]);
@@ -303,6 +321,7 @@ const MovieClub = () => {
   const payload = () => ({
     mediaIds: selected,
     whatsappUrl,
+    title: voteTitle,
     ...(isAdmin
       ? {
           closesAt: new Date(closesAt).toISOString(),
@@ -329,6 +348,7 @@ const MovieClub = () => {
       setStartMode('now');
       setStartsAt('');
       setCuratorUserIds([]);
+      setVoteTitle('');
       await mutate();
     } catch (requestError) {
       setError(
@@ -442,6 +462,70 @@ const MovieClub = () => {
       <p className="mt-1 text-sm text-amber-200">
         {intl.formatMessage(messages.topTenHelp)}
       </p>
+      <div className="mt-4 grid gap-3 md:grid-cols-2">
+        <input
+          className="rounded border border-gray-600 bg-gray-900 px-3 py-2 text-white"
+          placeholder={intl.formatMessage(messages.voteTitlePlaceholder)}
+          value={voteTitle}
+          onChange={(event) => setVoteTitle(event.target.value)}
+          aria-label={intl.formatMessage(messages.voteTitle)}
+        />
+        <input
+          className="rounded border border-gray-600 bg-gray-900 px-3 py-2 text-white"
+          placeholder={intl.formatMessage(messages.manualSearchPlaceholder)}
+          value={manualSearch}
+          onChange={(event) => setManualSearch(event.target.value)}
+          aria-label={intl.formatMessage(messages.manualSearch)}
+        />
+      </div>
+      {manualResults?.results.length ? (
+        <div className="mt-4 rounded border border-gray-700 bg-gray-900/60 p-3">
+          <h3 className="mb-2 font-semibold text-white">
+            {intl.formatMessage(messages.manualSearch)}
+          </h3>
+          <div className="grid gap-3 lg:grid-cols-2">
+            {manualResults.results.map((candidate) => (
+              <label
+                key={`manual-${candidate.mediaId}`}
+                className="flex cursor-pointer items-start gap-3 rounded border border-gray-700 p-3 text-white"
+              >
+                <input
+                  className="mt-1 shrink-0"
+                  type="checkbox"
+                  checked={selected.includes(candidate.mediaId)}
+                  disabled={
+                    !selected.includes(candidate.mediaId) &&
+                    selected.length >= 4
+                  }
+                  onChange={() => {
+                    if (
+                      !selected.includes(candidate.mediaId) &&
+                      candidate.hasWonMovieClub
+                    ) {
+                      window.alert(intl.formatMessage(messages.previousWinner));
+                    }
+                    setSelected((current) =>
+                      current.includes(candidate.mediaId)
+                        ? current.filter((id) => id !== candidate.mediaId)
+                        : [...current, candidate.mediaId]
+                    );
+                  }}
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-semibold leading-tight">
+                    {candidate.title}
+                  </span>
+                  {candidate.hasWonMovieClub && (
+                    <span className="mt-1 block text-xs text-amber-300">
+                      🏆 Movie Club
+                    </span>
+                  )}
+                </span>
+              </label>
+            ))}
+          </div>
+        </div>
+      ) : null}
       <div className="mt-4 grid gap-3 lg:grid-cols-2">
         {eligible?.results.map((candidate) => (
           <label
@@ -455,13 +539,19 @@ const MovieClub = () => {
               disabled={
                 !selected.includes(candidate.mediaId) && selected.length >= 4
               }
-              onChange={() =>
+              onChange={() => {
+                if (
+                  !selected.includes(candidate.mediaId) &&
+                  candidate.hasWonMovieClub
+                ) {
+                  window.alert(intl.formatMessage(messages.previousWinner));
+                }
                 setSelected((current) =>
                   current.includes(candidate.mediaId)
                     ? current.filter((id) => id !== candidate.mediaId)
                     : [...current, candidate.mediaId]
-                )
-              }
+                );
+              }}
             />
             <span className="min-w-0 flex-1">
               <span className="block truncate font-semibold leading-tight">
@@ -666,11 +756,12 @@ const MovieClub = () => {
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-xl font-semibold text-white">
-                {intl.formatMessage(
-                  session.status === 1
-                    ? messages.filmOfTheWeekHeading
-                    : messages.weeklyVote
-                )}
+                {session.title ||
+                  intl.formatMessage(
+                    session.status === 1
+                      ? messages.filmOfTheWeekHeading
+                      : messages.weeklyVote
+                  )}
               </h2>
               <p className="text-sm text-gray-400">
                 {session.status === 0
@@ -706,15 +797,6 @@ const MovieClub = () => {
                   <Button buttonType="ghost" onClick={() => setIsEditing(true)}>
                     {intl.formatMessage(messages.edit)}
                   </Button>
-                  {session.status === 0 && (
-                    <Button
-                      buttonType="primary"
-                      disabled={new Date(session.closesAt) > new Date()}
-                      onClick={resolveVote}
-                    >
-                      {intl.formatMessage(messages.resolveResult)}
-                    </Button>
-                  )}
                   {isAdmin && (
                     <>
                       <Button buttonType="primary" onClick={startNewVote}>

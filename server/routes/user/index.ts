@@ -1,7 +1,7 @@
 import JellyfinAPI from '@server/api/jellyfin';
 import PlexTvAPI from '@server/api/plextv';
 import TautulliAPI from '@server/api/tautulli';
-import { MediaType } from '@server/constants/media';
+import { MediaRequestStatus, MediaType } from '@server/constants/media';
 import { MediaServerType } from '@server/constants/server';
 import { UserType } from '@server/constants/user';
 import dataSource, { getRepository } from '@server/datasource';
@@ -832,6 +832,41 @@ router.get<{ id: string }, QuotaResponse>(
       return res.status(200).json(quotas);
     } catch (e) {
       next({ status: 404, message: e.message });
+    }
+  }
+);
+
+router.post<{ id: string }>(
+  '/:id/quota/reset',
+  isAuthenticated(Permission.MANAGE_USERS),
+  async (req, res, next) => {
+    try {
+      const userId = Number(req.params.id);
+      const user = await getRepository(User).findOneOrFail({
+        where: { id: userId },
+      });
+      const before = await user.getQuota();
+
+      const result = await getRepository(MediaRequest)
+        .createQueryBuilder()
+        .update(MediaRequest)
+        .set({ ignoreQuota: true })
+        .where('requestedById = :userId', { userId })
+        .andWhere('status != :declinedStatus', {
+          declinedStatus: MediaRequestStatus.DECLINED,
+        })
+        .andWhere('ignoreQuota = :ignoreQuota', { ignoreQuota: false })
+        .execute();
+
+      const after = await user.getQuota();
+      return res.status(200).json({
+        userId,
+        updatedRequests: result.affected ?? 0,
+        before,
+        after,
+      });
+    } catch (e) {
+      return next({ status: 404, message: e.message });
     }
   }
 );
