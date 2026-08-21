@@ -12,4 +12,4 @@ This fork keeps the original Seerr request flow as intact as possible and adds S
 - Mobile users get a compact Plex streams/statistics overlay.
 - Admins can manage interested users, removal requests, Movie Club votes, and reset a user's available request quota.
 
-Current Seerr+ release: `seerr-plus-v1.8.115`.
+Current Seerr+ release: `seerr-plus-v1.8.140`.

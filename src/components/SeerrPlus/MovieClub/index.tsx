@@ -110,8 +110,12 @@ const messages = defineMessages('components.SeerrPlus.MovieClub', {
   scheduleVote: 'Schedule voting',
   voteTitle: 'Vote title / theme',
   voteTitlePlaceholder: 'Example: Horror classics, 90s action, hidden gems…',
-  manualSearch: 'Search a movie manually',
+  manualSearch: 'Add a Movie manually',
   manualSearchPlaceholder: 'Search available Plex movies…',
+  manualSearchHelp:
+    'Search for a movie already available in Plex and add it to this vote.',
+  manualSearchLoading: 'Searching available Plex movies…',
+  manualSearchNoResults: 'No available Plex movie matches found.',
   previousWinner:
     'This movie has already won Movie Club. You can still add it if you want.',
 });
@@ -265,7 +269,9 @@ const MovieClub = () => {
       : null
   );
   const [manualSearch, setManualSearch] = useState('');
-  const { data: manualResults } = useSWR<{ results: Candidate[] }>(
+  const { data: manualResults, isValidating: isManualSearchLoading } = useSWR<{
+    results: Candidate[];
+  }>(
     canManage && manualSearch.trim().length >= 2
       ? `/api/v1/seerrplus/movie-club/search?query=${encodeURIComponent(
           manualSearch.trim()
@@ -478,6 +484,14 @@ const MovieClub = () => {
           aria-label={intl.formatMessage(messages.manualSearch)}
         />
       </div>
+      <p className="mt-2 text-sm text-gray-400">
+        {intl.formatMessage(messages.manualSearchHelp)}
+      </p>
+      {manualSearch.trim().length >= 2 && isManualSearchLoading && (
+        <p className="mt-3 text-sm text-gray-400">
+          {intl.formatMessage(messages.manualSearchLoading)}
+        </p>
+      )}
       {manualResults?.results.length ? (
         <div className="mt-4 rounded border border-gray-700 bg-gray-900/60 p-3">
           <h3 className="mb-2 font-semibold text-white">
@@ -525,6 +539,10 @@ const MovieClub = () => {
             ))}
           </div>
         </div>
+      ) : manualSearch.trim().length >= 2 && !isManualSearchLoading ? (
+        <p className="mt-3 rounded border border-gray-700 bg-gray-900/60 p-3 text-sm text-gray-400">
+          {intl.formatMessage(messages.manualSearchNoResults)}
+        </p>
       ) : null}
       <div className="mt-4 grid gap-3 lg:grid-cols-2">
         {eligible?.results.map((candidate) => (

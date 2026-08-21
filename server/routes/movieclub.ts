@@ -139,6 +139,22 @@ const getEligibleMedia = async () => {
     .getMany();
 };
 
+const getAvailableMovieMediaByIds = async (mediaIds: number[]) => {
+  const uniqueMediaIds = [...new Set(mediaIds.filter(Number.isFinite))];
+  if (!uniqueMediaIds.length) {
+    return [];
+  }
+
+  return getRepository(Media)
+    .createQueryBuilder('media')
+    .where('media.id IN (:...mediaIds)', { mediaIds: uniqueMediaIds })
+    .andWhere('media.mediaType = :mediaType', { mediaType: MediaType.MOVIE })
+    .andWhere('(media.status = :available OR media.status4k = :available)', {
+      available: MediaStatus.AVAILABLE,
+    })
+    .getMany();
+};
+
 const getSuggestionStats = async (mediaIds: number[], userId?: number) => {
   if (!mediaIds.length) return new Map<number, { count: number; mine: boolean }>();
   const weekKey = getMovieClubWeekKey();
@@ -654,8 +670,12 @@ movieClubRoutes.delete('/suggestions/:mediaId', async (req, res, next) => {
 movieClubRoutes.post('/sessions', async (req, res, next) => {
   try {
     if (!req.user || !canManageMovieClub(req)) return next({ status: 403, message: 'Administrator access required.' });
-    const mediaIds = Array.isArray(req.body?.mediaIds) ? req.body.mediaIds.map(Number) : [];
-    const curatorIds = Array.isArray(req.body?.curatorUserIds) ? [...new Set(req.body.curatorUserIds.map(Number))] : [];
+    const mediaIds: number[] = Array.isArray(req.body?.mediaIds)
+      ? req.body.mediaIds.map(Number)
+      : [];
+    const curatorIds: number[] = Array.isArray(req.body?.curatorUserIds)
+      ? [...new Set<number>(req.body.curatorUserIds.map(Number))]
+      : [];
     const closesAt = new Date(req.body?.closesAt);
     const startsAt = req.body?.startsAt ? new Date(req.body.startsAt) : null;
     const validCandidateCount = mediaIds.length >= 2 && mediaIds.length <= 4;
@@ -670,9 +690,8 @@ movieClubRoutes.post('/sessions', async (req, res, next) => {
       return next({ status: 400, message: 'The scheduled start must be in the future and before the voting deadline.' });
     }
     if (await findCurrentSession()) return next({ status: 409, message: 'A Movie Club session is already active.' });
-    const eligible = await getEligibleMedia();
-    const selected = eligible.filter((media) => mediaIds.includes(media.id));
-    if (selected.length !== new Set(mediaIds).size) return next({ status: 400, message: 'Candidates must be requested movies available in Plex.' });
+    const selected = await getAvailableMovieMediaByIds(mediaIds);
+    if (selected.length !== new Set(mediaIds).size) return next({ status: 400, message: 'Candidates must be movies available in Plex.' });
     const curators = curatorIds.length
       ? await getRepository(User).find({ where: { id: In(curatorIds) } })
       : [];
@@ -846,7 +865,9 @@ movieClubRoutes.patch('/sessions/:sessionId', async (req, res, next) => {
     }
 
     if (Array.isArray(req.body?.mediaIds)) {
-      const mediaIds = [...new Set(req.body.mediaIds.map(Number))];
+      const mediaIds: number[] = [
+        ...new Set<number>(req.body.mediaIds.map(Number)),
+      ];
       if (
         session.status === MovieClubSessionStatus.DRAFT &&
         session.closesAt <= new Date()
@@ -863,10 +884,9 @@ movieClubRoutes.patch('/sessions/:sessionId', async (req, res, next) => {
       ) {
         return next({ status: 400, message: session.status === MovieClubSessionStatus.DRAFT || session.status === MovieClubSessionStatus.SCHEDULED ? 'Select exactly four candidates to prepare the vote.' : 'Select between two and four candidates.' });
       }
-      const eligible = await getEligibleMedia();
-      const selected = eligible.filter((media) => mediaIds.includes(media.id));
+      const selected = await getAvailableMovieMediaByIds(mediaIds);
       if (selected.length !== mediaIds.length) {
-        return next({ status: 400, message: 'Candidates must be requested movies available in Plex.' });
+        return next({ status: 400, message: 'Candidates must be movies available in Plex.' });
       }
       const candidateRepository = getRepository(MovieClubCandidate);
       const retainedIds = session.candidates
@@ -887,7 +907,9 @@ movieClubRoutes.patch('/sessions/:sessionId', async (req, res, next) => {
     if (canManageMovieClub(req) && Array.isArray(req.body?.curatorUserIds)) {
       const curatorRepository = getRepository(MovieClubCurator);
       const previousCuratorIds = session.curators.map((curator) => curator.user.id);
-      const curatorIds = [...new Set(req.body.curatorUserIds.map(Number))];
+      const curatorIds: number[] = [
+        ...new Set<number>(req.body.curatorUserIds.map(Number)),
+      ];
       const users = curatorIds.length
         ? await getRepository(User).find({ where: { id: In(curatorIds) } })
         : [];
