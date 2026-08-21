@@ -2196,6 +2196,22 @@ paths:
                   series:
                     type: integer
                     minimum: 0
+                  currentStreams:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        title:
+                          type: string
+                        mediaType:
+                          type: string
+                        pageUrl:
+                          type: string
+                          description: Internal Seerr link for the streamed movie or series, when it can be matched.
+                        ratingKey:
+                          type: string
+                        imageUrl:
+                          type: string
                   updatedAt:
                     type: string
                     format: date-time
@@ -2205,6 +2221,43 @@ paths:
           description: Authentication required
         '502':
           description: Tautulli statistics could not be read and no cached values are available
+  /tautulli-stats/stream-image:
+    get:
+      summary: Proxy the poster/thumb for a currently streaming Tautulli item
+      description: Returns a short-lived image proxy for current Plex stream artwork without exposing the Tautulli API key to the browser.
+      tags:
+        - seerrplus
+      parameters:
+        - in: query
+          name: img
+          description: Tautulli/Plex image path returned by the currentStreams list.
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: index
+          description: Optional stream index used only for browser cache separation.
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Stream artwork image
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+        '403':
+          description: Authentication required
+        '404':
+          description: Tautulli image not found
+        '502':
+          description: Tautulli image could not be read
   /status:
     get:
       summary: Get Seerr status

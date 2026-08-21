@@ -80,6 +80,45 @@ const toEmailMovie = (
   requestedBy: movie.interestedUsers.map((user) => user.displayName).join(', '),
 });
 
+const hasWonMovieClub = async (mediaId: number) =>
+  (await getRepository(MovieClubSession)
+    .createQueryBuilder('session')
+    .leftJoin('session.selectedMedia', 'selectedMedia')
+    .where('selectedMedia.id = :mediaId', { mediaId })
+    .getCount()) > 0;
+
+const sendVotingOpenEmail = async (
+  session: MovieClubSession,
+  language?: string
+) => {
+  const openedDetails = await serializeSession(session, undefined, language);
+  await sendMovieClubEmail(
+    {
+      en: 'Movie Club voting is now open',
+      pt: 'A votação do Movie Club já está aberta',
+    },
+    {
+      en: `Voting is open. Pick the film you want everyone to watch before ${session.closesAt.toLocaleString()}. You can open each film page to read the synopsis before voting.`,
+      pt: `A votação está aberta. Escolhe o filme que queres que todos vejam antes de ${session.closesAt.toLocaleString()}. Podes abrir a página de cada filme para ler a sinopse antes de votar.`,
+    },
+    undefined,
+    {
+      actionLabel: {
+        en: 'Vote in Movie Club',
+        pt: 'Votar no Movie Club',
+      },
+      movies: openedDetails.candidates.map((candidate) => ({
+        title: candidate.title,
+        tmdbId: candidate.tmdbId,
+        releaseDate: candidate.releaseDate,
+        posterPath: candidate.posterPath,
+        overview: candidate.overview,
+        voteCount: candidate.votes,
+      })),
+    }
+  );
+};
+
 const getEligibleMedia = async () => {
   const weekKey = getMovieClubWeekKey();
   return getRepository(Media)
@@ -163,6 +202,7 @@ const serializeSession = async (
     startsAt: session.startsAt,
     closesAt: session.closesAt,
     whatsappUrl: session.whatsappUrl,
+    title: session.title,
     selectedMediaId: session.selectedMedia?.id ?? null,
     selectedCandidateId: session.selectedMedia
       ? session.candidates?.find((candidate) => candidate.media.id === session.selectedMedia?.id)?.id ?? null
@@ -191,19 +231,146 @@ const findCurrentSession = () =>
     order: { createdAt: 'DESC' },
   });
 
+const refreshSessionState = async (
+  session: MovieClubSession,
+  language?: string
+) => {
+  const repository = getRepository(MovieClubSession);
+  const now = new Date();
+
+  if (
+    session.status === MovieClubSessionStatus.SCHEDULED &&
+    session.startsAt &&
+    session.startsAt <= now
+  ) {
+    session.status = MovieClubSessionStatus.VOTING;
+    await repository.save(session);
+    if (!session.startNotificationSentAt) {
+      await sendVotingOpenEmail(session, language);
+      session.startNotificationSentAt = new Date();
+      await repository.save(session);
+    }
+  }
+
+  if (
+    session.status !== MovieClubSessionStatus.VOTING ||
+    session.closesAt > now
+  ) {
+    return session;
+  }
+
+  const freshSession = await repository.findOne({
+    where: { id: session.id },
+    relations: {
+      candidates: { media: true, votes: true },
+      votes: true,
+      selectedMedia: true,
+      curators: { user: true },
+    },
+  });
+  if (!freshSession || freshSession.status !== MovieClubSessionStatus.VOTING) {
+    return session;
+  }
+
+  const ranked = [...freshSession.candidates].sort(
+    (a, b) => b.votes.length - a.votes.length
+  );
+  const topVotes = ranked[0]?.votes.length ?? 0;
+  const leaders = ranked.filter(
+    (candidate) => candidate.votes.length === topVotes
+  );
+
+  if (leaders.length === 1) {
+    freshSession.status = MovieClubSessionStatus.SELECTED;
+    freshSession.selectedMedia = leaders[0].media;
+    await repository.save(freshSession);
+    const selectedMovie = await movieDetails(leaders[0].media, language);
+    await sendMovieClubEmail(
+      {
+        en: `Movie Club winner: ${selectedMovie.title}`,
+        pt: `Vencedor do Movie Club: ${selectedMovie.title}`,
+      },
+      {
+        en: `The votes are in. ${selectedMovie.title} is the Film of the Week with ${topVotes} votes. ${requesterText(selectedMovie)} Watch it on Plex, read the synopsis in Seerr+, and join the Movie Club discussion.`,
+        pt: `Os votos estão fechados. ${selectedMovie.title} é o Filme da Semana com ${topVotes} votos. ${requesterText(selectedMovie, true)} Vê no Plex, lê a sinopse no Seerr+ e junta-te à conversa do Movie Club.`,
+      },
+      undefined,
+      {
+        actionLabel: {
+          en: 'Open Film of the Week',
+          pt: 'Abrir Filme da Semana',
+        },
+        highlightMovie: toEmailMovie(selectedMovie, topVotes),
+        movies: [toEmailMovie(selectedMovie, topVotes)],
+      }
+    );
+    return freshSession;
+  }
+
+  const lowestVotes = Math.min(
+    ...ranked.map((candidate) => candidate.votes.length)
+  );
+  const lowest = ranked.filter(
+    (candidate) => candidate.votes.length === lowestVotes
+  );
+  const interestCounts = await Promise.all(
+    lowest.map(async (candidate) => ({
+      candidate,
+      count: (await getMediaRequesters(candidate.media.id, false)).length,
+    }))
+  );
+  interestCounts.sort(
+    (a, b) => a.count - b.count || b.candidate.id - a.candidate.id
+  );
+  await getRepository(MovieClubCandidate).remove(interestCounts[0].candidate);
+  await getRepository(MovieClubVote).delete({ session: { id: freshSession.id } });
+  freshSession.closesAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  await repository.save(freshSession);
+  const remainingMovies = await Promise.all(
+    ranked
+      .filter((candidate) => candidate.id !== interestCounts[0].candidate.id)
+      .map((candidate) => movieDetails(candidate.media, language))
+  );
+  await sendMovieClubEmail(
+    {
+      en: 'Movie Club tie-break: voting extended',
+      pt: 'Desempate do Movie Club: votação prolongada',
+    },
+    {
+      en: 'This vote ended in a tie. Previous votes were cleared, the lowest-ranked candidate was removed, and voting is open again for another 24 hours.',
+      pt: 'A votação terminou empatada. Os votos anteriores foram limpos, o candidato com menos votos foi removido e a votação está novamente aberta por mais 24 horas.',
+    },
+    undefined,
+    {
+      actionLabel: {
+        en: 'Vote again in Movie Club',
+        pt: 'Votar novamente no Movie Club',
+      },
+      movies: remainingMovies.map((movie) => toEmailMovie(movie, 0)),
+    }
+  );
+
+  return freshSession;
+};
+
 movieClubRoutes.get('/', async (req, res, next) => {
   try {
     const session = await findCurrentSession();
     if (!session) return res.json({ session: null });
+    const refreshedSession = await refreshSessionState(session, req.locale);
     if (
-      (session.status === MovieClubSessionStatus.DRAFT ||
-        session.status === MovieClubSessionStatus.SCHEDULED) &&
-      !canManageSession(req, session)
+      (refreshedSession.status === MovieClubSessionStatus.DRAFT ||
+        refreshedSession.status === MovieClubSessionStatus.SCHEDULED) &&
+      !canManageSession(req, refreshedSession)
     ) {
       return res.json({ session: null });
     }
-    const response = await serializeSession(session, req.user?.id, req.locale);
-    response.canManage = canManageSession(req, session);
+    const response = await serializeSession(
+      refreshedSession,
+      req.user?.id,
+      req.locale
+    );
+    response.canManage = canManageSession(req, refreshedSession);
     return res.json({ session: response });
   } catch (error) {
     return next({ status: 500, message: error instanceof Error ? error.message : String(error) });
@@ -253,15 +420,79 @@ movieClubRoutes.get('/eligible', async (req, res, next) => {
       ...ranked.filter((item) => !selectedMediaIds.has(item.mediaId)),
     ].slice(0, 10);
     return res.json({
-      results: top.map((item) => ({
-        ...item,
-        interestedUserCount: item.interestedUsers.length,
-        interestedUsers: [],
-      })),
+      results: await Promise.all(
+        top.map(async (item) => ({
+          ...item,
+          interestedUserCount: item.interestedUsers.length,
+          interestedUsers: [],
+          hasWonMovieClub: await hasWonMovieClub(item.mediaId),
+        }))
+      ),
       weekKey: getMovieClubWeekKey(),
     });
   } catch (error) {
     return next({ status: 500, message: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+movieClubRoutes.get('/search', async (req, res, next) => {
+  try {
+    if (!canManageMovieClub(req)) {
+      return next({ status: 403, message: 'Administrator access required.' });
+    }
+    const query = String(req.query.query ?? '').trim();
+    if (query.length < 2) {
+      return res.json({ results: [] });
+    }
+
+    const tmdbResults = await new TheMovieDb().searchMovies({
+      query,
+      page: 1,
+      language: req.locale,
+    });
+    const tmdbIds = tmdbResults.results.map((result) => result.id);
+    if (!tmdbIds.length) {
+      return res.json({ results: [] });
+    }
+
+    const media = await getRepository(Media).find({
+      where: {
+        tmdbId: In(tmdbIds),
+        mediaType: MediaType.MOVIE,
+      },
+    });
+    const available = media.filter(
+      (item) =>
+        item.status === MediaStatus.AVAILABLE ||
+        item.status4k === MediaStatus.AVAILABLE
+    );
+    const mediaByTmdbId = new Map(
+      available.map((item) => [item.tmdbId, item])
+    );
+    const results = await Promise.all(
+      tmdbResults.results
+        .map((result) => mediaByTmdbId.get(result.id))
+        .filter((item): item is Media => Boolean(item))
+        .slice(0, 10)
+        .map(async (item) => {
+          const details = await movieDetails(item, req.locale);
+          return {
+            ...details,
+            interestedUserCount: details.interestedUsers.length,
+            interestedUsers: [],
+            weeklySuggestions: 0,
+            suggestedByMe: false,
+            hasWonMovieClub: await hasWonMovieClub(item.id),
+          };
+        })
+    );
+
+    return res.json({ results });
+  } catch (error) {
+    return next({
+      status: 500,
+      message: error instanceof Error ? error.message : String(error),
+    });
   }
 });
 
@@ -448,7 +679,7 @@ movieClubRoutes.post('/sessions', async (req, res, next) => {
     if (curators.length !== curatorIds.length) {
       return next({ status: 400, message: 'One or more responsible users were not found.' });
     }
-    const session = await getRepository(MovieClubSession).save(new MovieClubSession({ status: mediaIds.length ? (startsAt ? MovieClubSessionStatus.SCHEDULED : MovieClubSessionStatus.VOTING) : MovieClubSessionStatus.DRAFT, startsAt, closesAt, whatsappUrl: String(req.body?.whatsappUrl ?? '').trim() || null, createdBy: req.user }));
+    const session = await getRepository(MovieClubSession).save(new MovieClubSession({ status: mediaIds.length ? (startsAt ? MovieClubSessionStatus.SCHEDULED : MovieClubSessionStatus.VOTING) : MovieClubSessionStatus.DRAFT, startsAt, closesAt, whatsappUrl: String(req.body?.whatsappUrl ?? '').trim() || null, title: String(req.body?.title ?? '').trim() || null, createdBy: req.user }));
     if (selected.length) {
       await getRepository(MovieClubCandidate).save(selected.map((media) => new MovieClubCandidate({ session, media })));
     }
@@ -609,6 +840,9 @@ movieClubRoutes.patch('/sessions/:sessionId', async (req, res, next) => {
     }
     if (Object.prototype.hasOwnProperty.call(req.body, 'whatsappUrl')) {
       session.whatsappUrl = String(req.body.whatsappUrl ?? '').trim() || null;
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, 'title')) {
+      session.title = String(req.body.title ?? '').trim() || null;
     }
 
     if (Array.isArray(req.body?.mediaIds)) {

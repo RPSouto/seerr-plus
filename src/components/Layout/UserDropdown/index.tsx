@@ -6,6 +6,7 @@ import { Menu, Transition } from '@headlessui/react';
 import {
   ArrowRightOnRectangleIcon,
   ClockIcon,
+  ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 import { CogIcon, UserIcon } from '@heroicons/react/24/solid';
 import axios from 'axios';
@@ -18,6 +19,7 @@ const messages = defineMessages('components.Layout.UserDropdown', {
   myprofile: 'Profile',
   settings: 'Settings',
   requests: 'Requests',
+  issues: 'Issues',
   signout: 'Sign Out',
 });
 
@@ -115,6 +117,31 @@ const UserDropdown = () => {
                   </ForwardedLink>
                 )}
               </Menu.Item>
+              {hasPermission(
+                [
+                  Permission.MANAGE_ISSUES,
+                  Permission.CREATE_ISSUES,
+                  Permission.VIEW_ISSUES,
+                ],
+                { type: 'or' }
+              ) && (
+                <Menu.Item>
+                  {({ active }) => (
+                    <ForwardedLink
+                      href="/issues"
+                      className={`flex items-center rounded px-4 py-2 text-sm font-medium text-gray-200 transition duration-150 ease-in-out ${
+                        active
+                          ? 'bg-gradient-to-br from-indigo-600 to-purple-600 text-white'
+                          : ''
+                      }`}
+                      data-testid="user-menu-issues"
+                    >
+                      <ExclamationTriangleIcon className="mr-2 inline h-5 w-5" />
+                      <span>{intl.formatMessage(messages.issues)}</span>
+                    </ForwardedLink>
+                  )}
+                </Menu.Item>
+              )}
               <Menu.Item>
                 {({ active }) => (
                   <ForwardedLink

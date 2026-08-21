@@ -6,9 +6,7 @@ import { Permission, useUser } from '@app/hooks/useUser';
 import defineMessages from '@app/utils/defineMessages';
 import { Transition } from '@headlessui/react';
 import {
-  ClockIcon,
   CogIcon,
-  ExclamationTriangleIcon,
   EyeSlashIcon,
   FilmIcon,
   TrophyIcon,
@@ -75,12 +73,6 @@ const SidebarLinks: SidebarLinkProps[] = [
     activeRegExp: /^\/discover\/tv$/,
   },
   {
-    href: '/requests',
-    messagesKey: 'requests',
-    svgIcon: <ClockIcon className="mr-3 h-6 w-6" />,
-    activeRegExp: /^\/requests/,
-  },
-  {
     href: '/movie-club',
     messagesKey: 'movieclub',
     svgIcon: <TrophyIcon className="mr-3 h-6 w-6" />,
@@ -94,18 +86,6 @@ const SidebarLinks: SidebarLinkProps[] = [
     requiredPermission: [
       Permission.MANAGE_BLOCKLIST,
       Permission.VIEW_BLOCKLIST,
-    ],
-    permissionType: 'or',
-  },
-  {
-    href: '/issues',
-    messagesKey: 'issues',
-    svgIcon: <ExclamationTriangleIcon className="mr-3 h-6 w-6" />,
-    activeRegExp: /^\/issues/,
-    requiredPermission: [
-      Permission.MANAGE_ISSUES,
-      Permission.CREATE_ISSUES,
-      Permission.VIEW_ISSUES,
     ],
     permissionType: 'or',
   },

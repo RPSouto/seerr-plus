@@ -6,6 +6,7 @@ import {
   TvIcon,
 } from '@heroicons/react/24/outline';
 import axios from 'axios';
+import Link from 'next/link';
 import { useState } from 'react';
 import { FormattedRelativeTime, useIntl } from 'react-intl';
 import useSWR from 'swr';
@@ -19,6 +20,8 @@ const messages = defineMessages('components.SeerrPlus.LibraryStats', {
   updated: 'Updated {relativeTime}',
   unavailable: 'Statistics unavailable',
   stale: 'Showing the last successful update',
+  nowStreaming: 'Now streaming',
+  noStreams: 'No active streams',
 });
 
 type LibraryStatsResponse = {
@@ -26,11 +29,23 @@ type LibraryStatsResponse = {
   streams?: number;
   movies?: number;
   series?: number;
+  currentStreams?: {
+    title: string;
+    mediaType?: string;
+    pageUrl?: string;
+    imageUrl?: string;
+  }[];
   updatedAt?: string;
   stale?: boolean;
 };
 
-const LibraryStats = () => {
+const LibraryStats = ({
+  modal = false,
+  onStreamOpen,
+}: {
+  modal?: boolean;
+  onStreamOpen?: () => void;
+}) => {
   const intl = useIntl();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { data, error, isValidating, mutate } =
@@ -69,7 +84,11 @@ const LibraryStats = () => {
   const refreshing = isRefreshing || isValidating;
 
   return (
-    <div className="mx-2 mb-3 rounded-lg border border-gray-700 bg-gray-900 p-3 text-xs text-gray-300">
+    <div
+      className={`rounded-lg border border-gray-700 bg-gray-900 p-3 text-xs text-gray-300 ${
+        modal ? '' : 'mx-2 mb-3'
+      }`}
+    >
       <div className="mb-2 flex items-center justify-between">
         <span className="font-bold text-gray-100">
           {intl.formatMessage(messages.title)}
@@ -89,6 +108,57 @@ const LibraryStats = () => {
       </div>
       {data ? (
         <>
+          <div className="mb-3 border-b border-gray-700 pb-3">
+            <div className="mb-2 font-semibold text-gray-100">
+              {intl.formatMessage(messages.nowStreaming)}
+            </div>
+            {data.currentStreams?.length ? (
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {data.currentStreams.map((stream, index) => {
+                  const poster = (
+                    <div className="aspect-[2/3] overflow-hidden rounded border border-gray-700 bg-gray-800 transition group-hover:border-amber-400 group-focus:border-amber-400">
+                      {stream.imageUrl ? (
+                        <img
+                          src={stream.imageUrl}
+                          alt=""
+                          className="h-full w-full object-cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center">
+                          <PlayCircleIcon className="h-5 w-5 text-gray-500" />
+                        </div>
+                      )}
+                    </div>
+                  );
+
+                  return stream.pageUrl ? (
+                    <Link
+                      key={`${stream.title}-${index}`}
+                      href={stream.pageUrl}
+                      className="group w-14 shrink-0 focus:outline-none"
+                      title={stream.title}
+                      onClick={onStreamOpen}
+                    >
+                      {poster}
+                    </Link>
+                  ) : (
+                    <div
+                      key={`${stream.title}-${index}`}
+                      className="w-14 shrink-0"
+                      title={stream.title}
+                    >
+                      {poster}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-gray-500">
+                {intl.formatMessage(messages.noStreams)}
+              </div>
+            )}
+          </div>
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <span className="flex items-center">
