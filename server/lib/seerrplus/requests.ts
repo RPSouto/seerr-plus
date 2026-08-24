@@ -93,6 +93,23 @@ export const getMediaRequesters = async (
   ];
 };
 
+export const getPublicMediaRequesters = async (
+  mediaId: number
+): Promise<SeerrPlusUser[]> => {
+  const participants = await getMediaParticipants(mediaId);
+
+  return [
+    ...new Map(
+      participants
+        .filter(({ user }) => user.settings?.shareRequestsPublicly)
+        .map(({ user }) => [
+          user.id,
+          { id: user.id, displayName: user.displayName, avatar: user.avatar },
+        ])
+    ).values(),
+  ];
+};
+
 export const getMediaInterestedUsers = async (
   mediaId: number,
   is4k: boolean

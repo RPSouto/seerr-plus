@@ -512,6 +512,8 @@ const RequestButton = ({
     return null;
   }
 
+  const isJoinRequestIconOnly = buttonOne.id === 'join-request';
+
   return (
     <>
       <RequestModal
@@ -541,11 +543,17 @@ const RequestButton = ({
         text={
           <>
             {buttonOne.svg}
-            <span>{buttonOne.text}</span>
+            {!isJoinRequestIconOnly && <span>{buttonOne.text}</span>}
           </>
         }
         onClick={buttonOne.action}
-        className="ml-2"
+        className={`ml-2 ${
+          isJoinRequestIconOnly
+            ? '!mr-2 !h-[38px] !w-[54px] justify-center !px-0'
+            : ''
+        }`}
+        aria-label={isJoinRequestIconOnly ? buttonOne.text : undefined}
+        title={isJoinRequestIconOnly ? buttonOne.text : undefined}
       >
         {others && others.length > 0
           ? others.map((button) => (

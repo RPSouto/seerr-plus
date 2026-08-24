@@ -4,6 +4,7 @@ import PreparedEmail from '@server/lib/email';
 import DiscordAgent from '@server/lib/notifications/agents/discord';
 import PushbulletAgent from '@server/lib/notifications/agents/pushbullet';
 import PushoverAgent from '@server/lib/notifications/agents/pushover';
+import WebPushAgent from '@server/lib/notifications/agents/webpush';
 import { Notification } from '@server/lib/notifications';
 import { getSettings, NotificationAgentKey } from '@server/lib/settings';
 import logger from '@server/logger';
@@ -144,6 +145,7 @@ export const sendMovieClubEmail = async (
       : [];
     const pushbullet = new PushbulletAgent();
     const pushover = new PushoverAgent();
+    const webpush = new WebPushAgent();
     const directResults = await Promise.allSettled(
       users.flatMap((user) => {
         const portuguese = isPortuguese(user);
@@ -167,6 +169,18 @@ export const sendMovieClubEmail = async (
             notifyAdmin: false,
             notifyUser: user,
           }),
+          ...(webpush.shouldSend()
+            ? [
+                webpush.send(Notification.MOVIE_CLUB, {
+                  subject: localizedText(subject, portuguese),
+                  message: localizedText(body, portuguese),
+                  notifySystem: false,
+                  notifyAdmin: false,
+                  notifyUser: user,
+                  image: posterUrl(highlightMovie?.posterPath),
+                }),
+              ]
+            : []),
         ];
       })
     );

@@ -214,6 +214,10 @@ components:
           nullable: true
           description: 'Enable watchlist sync for TV'
           example: false
+        shareRequestsPublicly:
+          type: boolean
+          description: 'Allow Seerr+ to show this user as a public requester on available media'
+          example: false
     MainSettings:
       type: object
       properties:
@@ -8358,6 +8362,21 @@ paths:
       responses:
         '200':
           description: Distinct interested users
+  /seerrplus/media/{mediaId}/public-requesters:
+    get:
+      summary: Get public requesters for a media item
+      description: Returns only users who requested or showed interest in this media item and opted in to sharing their requests publicly.
+      tags:
+        - seerrplus
+      parameters:
+        - in: path
+          name: mediaId
+          required: true
+          schema:
+            type: number
+      responses:
+        '200':
+          description: Public requester users for the media item
   /seerrplus/media/{mediaId}/interests:
     get:
       summary: Get distinct users interested in active standard requests for a media item
@@ -8525,6 +8544,12 @@ paths:
           schema:
             type: string
             minLength: 2
+        - in: query
+          name: sessionId
+          required: false
+          schema:
+            type: number
+          description: Existing draft/session id when a responsible user searches while editing.
       responses:
         '200':
           description: Available Movie Club movie matches
@@ -8641,6 +8666,12 @@ paths:
                 whatsappUrl:
                   type: string
                   nullable: true
+                title:
+                  type: string
+                  nullable: true
+                draft:
+                  type: boolean
+                  description: Save the setup as a draft without opening or scheduling voting.
                 curatorUserIds:
                   type: array
                   uniqueItems: true
@@ -8705,7 +8736,7 @@ paths:
               properties:
                 mediaIds:
                   type: array
-                  minItems: 2
+                  minItems: 0
                   maxItems: 4
                   uniqueItems: true
                   items:
@@ -8720,6 +8751,12 @@ paths:
                 whatsappUrl:
                   type: string
                   nullable: true
+                title:
+                  type: string
+                  nullable: true
+                draft:
+                  type: boolean
+                  description: Keep the session as a draft while saving current candidates and responsible users.
                 curatorUserIds:
                   type: array
                   uniqueItems: true

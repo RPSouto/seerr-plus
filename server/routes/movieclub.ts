@@ -453,8 +453,17 @@ movieClubRoutes.get('/eligible', async (req, res, next) => {
 
 movieClubRoutes.get('/search', async (req, res, next) => {
   try {
-    if (!canManageMovieClub(req)) {
-      return next({ status: 403, message: 'Administrator access required.' });
+    const session = req.query.sessionId
+      ? await getRepository(MovieClubSession).findOne({
+          where: { id: Number(req.query.sessionId) },
+          relations: { curators: { user: true } },
+        })
+      : null;
+    if (
+      !canManageMovieClub(req) &&
+      (!session || !canManageSession(req, session))
+    ) {
+      return next({ status: 403, message: 'Movie Club manager access required.' });
     }
     const query = String(req.query.query ?? '').trim();
     if (query.length < 2) {
@@ -678,9 +687,11 @@ movieClubRoutes.post('/sessions', async (req, res, next) => {
       : [];
     const closesAt = new Date(req.body?.closesAt);
     const startsAt = req.body?.startsAt ? new Date(req.body.startsAt) : null;
+    const saveDraft = req.body?.draft === true;
     const validCandidateCount = mediaIds.length >= 2 && mediaIds.length <= 4;
     const validDelegatedDraft = mediaIds.length === 0 && curatorIds.length > 0;
-    if ((!validCandidateCount && !validDelegatedDraft) || Number.isNaN(closesAt.getTime()) || closesAt <= new Date()) return next({ status: 400, message: 'Select between two and four candidates, or assign a responsible user, and choose a future closing date.' });
+    const validDraft = saveDraft && mediaIds.length <= 4;
+    if ((!validCandidateCount && !validDelegatedDraft && !validDraft) || Number.isNaN(closesAt.getTime()) || closesAt <= new Date()) return next({ status: 400, message: 'Select between two and four candidates, save a draft, or assign a responsible user, and choose a future closing date.' });
     if (
       startsAt &&
       (Number.isNaN(startsAt.getTime()) ||
@@ -698,7 +709,7 @@ movieClubRoutes.post('/sessions', async (req, res, next) => {
     if (curators.length !== curatorIds.length) {
       return next({ status: 400, message: 'One or more responsible users were not found.' });
     }
-    const session = await getRepository(MovieClubSession).save(new MovieClubSession({ status: mediaIds.length ? (startsAt ? MovieClubSessionStatus.SCHEDULED : MovieClubSessionStatus.VOTING) : MovieClubSessionStatus.DRAFT, startsAt, closesAt, whatsappUrl: String(req.body?.whatsappUrl ?? '').trim() || null, title: String(req.body?.title ?? '').trim() || null, createdBy: req.user }));
+    const session = await getRepository(MovieClubSession).save(new MovieClubSession({ status: saveDraft || !mediaIds.length ? MovieClubSessionStatus.DRAFT : (startsAt ? MovieClubSessionStatus.SCHEDULED : MovieClubSessionStatus.VOTING), startsAt: saveDraft ? null : startsAt, closesAt, whatsappUrl: String(req.body?.whatsappUrl ?? '').trim() || null, title: String(req.body?.title ?? '').trim() || null, createdBy: req.user }));
     if (selected.length) {
       await getRepository(MovieClubCandidate).save(selected.map((media) => new MovieClubCandidate({ session, media })));
     }
@@ -830,6 +841,7 @@ movieClubRoutes.patch('/sessions/:sessionId', async (req, res, next) => {
       return next({ status: 403, message: 'Only an administrator can change the scheduled start.' });
     }
     const wasScheduled = session.status === MovieClubSessionStatus.SCHEDULED;
+    const saveDraft = req.body?.draft === true;
     if (Object.prototype.hasOwnProperty.call(req.body, 'startsAt')) {
       if (
         session.status !== MovieClubSessionStatus.DRAFT &&
@@ -875,14 +887,18 @@ movieClubRoutes.patch('/sessions/:sessionId', async (req, res, next) => {
         return next({ status: 409, message: 'The administrator must choose a new voting deadline before the vote can open.' });
       }
       if (
-        ((session.status === MovieClubSessionStatus.DRAFT ||
+        !saveDraft &&
+        (((session.status === MovieClubSessionStatus.DRAFT ||
           session.status === MovieClubSessionStatus.SCHEDULED) &&
           mediaIds.length !== 4) ||
-        (session.status !== MovieClubSessionStatus.DRAFT &&
-          session.status !== MovieClubSessionStatus.SCHEDULED &&
-          (mediaIds.length < 2 || mediaIds.length > 4))
+          (session.status !== MovieClubSessionStatus.DRAFT &&
+            session.status !== MovieClubSessionStatus.SCHEDULED &&
+            (mediaIds.length < 2 || mediaIds.length > 4)))
       ) {
         return next({ status: 400, message: session.status === MovieClubSessionStatus.DRAFT || session.status === MovieClubSessionStatus.SCHEDULED ? 'Select exactly four candidates to prepare the vote.' : 'Select between two and four candidates.' });
+      }
+      if (saveDraft && mediaIds.length > 4) {
+        return next({ status: 400, message: 'A draft can include up to four candidates.' });
       }
       const selected = await getAvailableMovieMediaByIds(mediaIds);
       if (selected.length !== mediaIds.length) {
@@ -956,9 +972,14 @@ movieClubRoutes.patch('/sessions/:sessionId', async (req, res, next) => {
 
     const preparedFromDraft =
       session.status === MovieClubSessionStatus.DRAFT &&
-      Array.isArray(req.body?.mediaIds);
+      Array.isArray(req.body?.mediaIds) &&
+      !saveDraft;
     const startImmediately = !session.startsAt || session.startsAt <= new Date();
-    if (preparedFromDraft) {
+    if (saveDraft) {
+      session.status = MovieClubSessionStatus.DRAFT;
+      session.startsAt = null;
+      session.startNotificationSentAt = null;
+    } else if (preparedFromDraft) {
       session.status = startImmediately
         ? MovieClubSessionStatus.VOTING
         : MovieClubSessionStatus.SCHEDULED;

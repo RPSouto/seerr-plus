@@ -11,5 +11,6 @@ This fork keeps the original Seerr request flow as intact as possible and adds S
 - Plex/Tautulli sidebar statistics show active streams, movie count, and series count without forcing library updates.
 - Mobile users get a compact Plex streams/statistics overlay.
 - Admins can manage interested users, removal requests, Movie Club votes, and reset a user's available request quota.
+- Users can opt in to publicly showing that they requested available media.
 
-Current Seerr+ release: `seerr-plus-v1.8.140`.
+Current Seerr+ release: `seerr-plus-v1.8.195`.

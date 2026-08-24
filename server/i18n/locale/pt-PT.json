@@ -1,1 +1,4 @@
-{}
+{
+  "notifications.agents.webpush.movieClub": "Novidade no Movie Club",
+  "notifications.agents.webpush.viewMovieClub": "Abrir Movie Club"
+}

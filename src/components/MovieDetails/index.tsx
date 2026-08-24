@@ -24,6 +24,7 @@ import RequestButton from '@app/components/RequestButton';
 import RequestInterestUsers from '@app/components/SeerrPlus/RequestInterestUsers';
 import RemovalRequestButton from '@app/components/SeerrPlus/RemovalRequestButton';
 import MovieClubSuggestButton from '@app/components/SeerrPlus/MovieClub/SuggestButton';
+import PublicRequestersBadge from '@app/components/SeerrPlus/PublicRequestersBadge';
 import Slider from '@app/components/Slider';
 import StatusBadge from '@app/components/StatusBadge';
 import useDeepLinks from '@app/hooks/useDeepLinks';
@@ -574,6 +575,13 @@ const MovieDetails = ({ movie }: MovieDetailsProps) => {
                 <span>{intl.formatMessage(messages.movieClubWinner)}</span>
               </Badge>
             )}
+            <PublicRequestersBadge
+              mediaId={data.mediaInfo?.id}
+              visible={
+                data.mediaInfo?.status === MediaStatus.AVAILABLE ||
+                data.mediaInfo?.status4k === MediaStatus.AVAILABLE
+              }
+            />
           </div>
           <h1 data-testid="media-title">
             {data.title}{' '}

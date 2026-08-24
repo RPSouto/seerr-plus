@@ -69,6 +69,9 @@ const messages = defineMessages(
     plexwatchlistsyncseries: 'Auto-Request Series',
     plexwatchlistsyncseriestip:
       'Automatically request series on your <PlexWatchlistSupportLink>Plex Watchlist</PlexWatchlistSupportLink>',
+    shareRequestsPublicly: 'Share my requests',
+    shareRequestsPubliclyTip:
+      'Show your name on available movies and series you requested or showed interest in.',
   }
 );
 
@@ -161,6 +164,7 @@ const UserGeneralSettings = () => {
           tvQuotaDays: data?.tvQuotaDays,
           watchlistSyncMovies: data?.watchlistSyncMovies,
           watchlistSyncTv: data?.watchlistSyncTv,
+          shareRequestsPublicly: data?.shareRequestsPublicly ?? false,
         }}
         validationSchema={UserGeneralSettingsSchema}
         enableReinitialize
@@ -182,6 +186,7 @@ const UserGeneralSettings = () => {
               tvQuotaDays: tvQuotaEnabled ? values.tvQuotaDays : null,
               watchlistSyncMovies: values.watchlistSyncMovies,
               watchlistSyncTv: values.watchlistSyncTv,
+              shareRequestsPublicly: values.shareRequestsPublicly,
             });
 
             if (currentUser?.id === user?.id && setLocale) {
@@ -596,6 +601,29 @@ const UserGeneralSettings = () => {
                     </div>
                   </div>
                 )}
+              <div className="form-row">
+                <label htmlFor="shareRequestsPublicly" className="checkbox-label">
+                  <span>
+                    {intl.formatMessage(messages.shareRequestsPublicly)}
+                  </span>
+                  <span className="label-tip">
+                    {intl.formatMessage(messages.shareRequestsPubliclyTip)}
+                  </span>
+                </label>
+                <div className="form-input-area">
+                  <Field
+                    type="checkbox"
+                    id="shareRequestsPublicly"
+                    name="shareRequestsPublicly"
+                    onChange={() => {
+                      setFieldValue(
+                        'shareRequestsPublicly',
+                        !values.shareRequestsPublicly
+                      );
+                    }}
+                  />
+                </div>
+              </div>
               <div className="actions">
                 <div className="flex justify-end">
                   <span className="ml-3 inline-flex rounded-md shadow-sm">

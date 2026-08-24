@@ -16,6 +16,7 @@ import { Permission } from '@server/lib/permissions';
 import {
   addRequestParticipant,
   getMediaRequesters,
+  getPublicMediaRequesters,
   getRequestParticipants,
   removeRequestParticipant,
 } from '@server/lib/seerrplus/requests';
@@ -210,6 +211,26 @@ seerrPlusRoutes.get('/media/:mediaId/requesters', async (req, res, next) => {
     });
   }
 });
+
+seerrPlusRoutes.get(
+  '/media/:mediaId/public-requesters',
+  async (req, res, next) => {
+    try {
+      const mediaId = Number(req.params.mediaId);
+      const requesters = await getPublicMediaRequesters(mediaId);
+
+      return res.json({
+        mediaId,
+        users: requesters,
+      });
+    } catch (error) {
+      return next({
+        status: 500,
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+);
 
 seerrPlusRoutes.get('/media/:mediaId/interests', async (req, res, next) => {
   try {

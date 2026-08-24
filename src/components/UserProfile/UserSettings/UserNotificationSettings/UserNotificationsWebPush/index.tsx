@@ -298,6 +298,7 @@ const UserWebPushSettings = () => {
               <NotificationTypeSelector
                 user={user}
                 currentTypes={values.types}
+                includeMovieClub
                 onUpdate={(newTypes) => {
                   setFieldValue('types', newTypes);
                   setFieldTouched('types');
