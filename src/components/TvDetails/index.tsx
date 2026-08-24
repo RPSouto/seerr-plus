@@ -23,6 +23,7 @@ import PersonCard from '@app/components/PersonCard';
 import RequestButton from '@app/components/RequestButton';
 import RemovalRequestButton from '@app/components/SeerrPlus/RemovalRequestButton';
 import RequestInterestUsers from '@app/components/SeerrPlus/RequestInterestUsers';
+import PublicRequestersBadge from '@app/components/SeerrPlus/PublicRequestersBadge';
 import RequestModal from '@app/components/RequestModal';
 import Slider from '@app/components/Slider';
 import StatusBadge from '@app/components/StatusBadge';
@@ -589,6 +590,15 @@ const TvDetails = ({ tv }: TvDetailsProps) => {
                   serviceUrl={data.mediaInfo?.serviceUrl4k}
                 />
               )}
+            <PublicRequestersBadge
+              mediaId={data.mediaInfo?.id}
+              visible={
+                data.mediaInfo?.status === MediaStatus.AVAILABLE ||
+                data.mediaInfo?.status === MediaStatus.PARTIALLY_AVAILABLE ||
+                data.mediaInfo?.status4k === MediaStatus.AVAILABLE ||
+                data.mediaInfo?.status4k === MediaStatus.PARTIALLY_AVAILABLE
+              }
+            />
           </div>
           <h1 data-testid="media-title">
             {data.name}{' '}

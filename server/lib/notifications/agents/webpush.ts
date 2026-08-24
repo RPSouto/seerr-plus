@@ -29,8 +29,10 @@ const messages = defineMessages('notifications.agents.webpush', {
   issueComment: '{userName} commented on the {issueType}.',
   issueResolved: 'The {issueType} was marked as resolved by {userName}!',
   issueReopened: 'The {issueType} was reopened by {userName}.',
+  movieClub: 'Movie Club update',
   viewIssue: 'View Issue',
   viewMedia: 'View Media',
+  viewMovieClub: 'Open Movie Club',
 });
 
 interface PushNotificationPayload {
@@ -165,6 +167,10 @@ class WebPushAgent
           userName: payload.issue?.modifiedBy?.displayName,
         });
         break;
+      case Notification.MOVIE_CLUB:
+        message =
+          payload.message ?? intl.formatMessage(messages.movieClub);
+        break;
       default:
         return {
           notificationType: Notification[type],
@@ -172,15 +178,22 @@ class WebPushAgent
         };
     }
 
-    const actionUrl = payload.issue
-      ? `/issues/${payload.issue.id}`
-      : payload.media
-        ? `/${payload.media.mediaType}/${payload.media.tmdbId}`
-        : undefined;
+    const actionUrl =
+      type === Notification.MOVIE_CLUB
+        ? '/movie-club'
+        : payload.issue
+          ? `/issues/${payload.issue.id}`
+          : payload.media
+            ? `/${payload.media.mediaType}/${payload.media.tmdbId}`
+            : undefined;
 
     const actionUrlTitle = actionUrl
       ? intl.formatMessage(
-          payload.issue ? messages.viewIssue : messages.viewMedia
+          type === Notification.MOVIE_CLUB
+            ? messages.viewMovieClub
+            : payload.issue
+              ? messages.viewIssue
+              : messages.viewMedia
         )
       : undefined;
 

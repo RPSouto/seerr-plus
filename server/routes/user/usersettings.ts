@@ -63,6 +63,7 @@ userSettingsRoutes.get<{ id: string }, UserSettingsGeneralResponse>(
         globalTvQuotaLimit: defaultQuotas.tv.quotaLimit,
         watchlistSyncMovies: user.settings?.watchlistSyncMovies,
         watchlistSyncTv: user.settings?.watchlistSyncTv,
+        shareRequestsPublicly: user.settings?.shareRequestsPublicly ?? false,
       });
     } catch (e) {
       next({ status: 500, message: e.message });
@@ -121,13 +122,14 @@ userSettingsRoutes.post<
 
     if (!user.settings) {
       user.settings = new UserSettings({
-        user: req.user,
+        user,
         locale: req.body.locale,
         discoverRegion: req.body.discoverRegion,
         streamingRegion: req.body.streamingRegion,
         originalLanguage: req.body.originalLanguage,
         watchlistSyncMovies: req.body.watchlistSyncMovies,
         watchlistSyncTv: req.body.watchlistSyncTv,
+        shareRequestsPublicly: req.body.shareRequestsPublicly ?? false,
       });
     } else {
       user.settings.locale = req.body.locale;
@@ -136,6 +138,8 @@ userSettingsRoutes.post<
       user.settings.originalLanguage = req.body.originalLanguage;
       user.settings.watchlistSyncMovies = req.body.watchlistSyncMovies;
       user.settings.watchlistSyncTv = req.body.watchlistSyncTv;
+      user.settings.shareRequestsPublicly =
+        req.body.shareRequestsPublicly ?? false;
     }
 
     const savedUser = await userRepository.save(user);
@@ -148,6 +152,7 @@ userSettingsRoutes.post<
       originalLanguage: savedUser.settings?.originalLanguage,
       watchlistSyncMovies: savedUser.settings?.watchlistSyncMovies,
       watchlistSyncTv: savedUser.settings?.watchlistSyncTv,
+      shareRequestsPublicly: savedUser.settings?.shareRequestsPublicly ?? false,
       email: savedUser.email,
     });
   } catch (e) {

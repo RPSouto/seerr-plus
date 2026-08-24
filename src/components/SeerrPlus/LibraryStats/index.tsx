@@ -85,13 +85,13 @@ const LibraryStats = ({
 
   return (
     <div
-      className={`rounded-lg border border-gray-700 bg-gray-900 p-3 text-xs text-gray-300 ${
-        modal ? '' : 'mx-2 mb-3'
+      className={`rounded-lg border border-gray-700 bg-gray-900 p-2 text-xs text-gray-300 ${
+        modal ? '' : 'mx-4 mb-3'
       }`}
     >
       {data ? (
         <>
-          <div className="mb-3 border-b border-gray-700 pb-3">
+          <div className="mb-2 border-b border-gray-700 pb-2">
             <div className="mb-2 flex items-center justify-between">
               <span className="font-semibold text-gray-100">
                 {intl.formatMessage(messages.nowStreaming)}
@@ -110,7 +110,7 @@ const LibraryStats = ({
               </button>
             </div>
             {data.currentStreams?.length ? (
-              <div className="flex gap-2 overflow-x-auto pb-1">
+              <div className="flex gap-1.5 overflow-x-auto pb-1">
                 {data.currentStreams.map((stream, index) => {
                   const poster = (
                     <div className="aspect-[2/3] overflow-hidden rounded border border-gray-700 bg-gray-800 transition group-hover:border-amber-400 group-focus:border-amber-400">
@@ -133,7 +133,7 @@ const LibraryStats = ({
                     <Link
                       key={`${stream.title}-${index}`}
                       href={stream.pageUrl}
-                      className="group w-14 shrink-0 focus:outline-none"
+                      className="group w-12 shrink-0 focus:outline-none"
                       title={stream.title}
                       onClick={onStreamOpen}
                     >
@@ -142,7 +142,7 @@ const LibraryStats = ({
                   ) : (
                     <div
                       key={`${stream.title}-${index}`}
-                      className="w-14 shrink-0"
+                      className="w-12 shrink-0"
                       title={stream.title}
                     >
                       {poster}
@@ -156,7 +156,7 @@ const LibraryStats = ({
               </div>
             )}
           </div>
-          <div className="space-y-1.5">
+          <div className="space-y-1">
             <div className="flex items-center justify-between">
               <span className="flex items-center">
                 <PlayCircleIcon className="mr-2 h-4 w-4" />

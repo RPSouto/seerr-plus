@@ -225,28 +225,43 @@ class TautulliAPI {
         series: libraries
           .filter((library) => library.section_type.toLowerCase() === 'show')
           .reduce((total, library) => total + toCount(library.count), 0),
-        currentStreams: (activity.sessions ?? []).map((session) => ({
-          title:
-            session.full_title ??
-            session.grandparent_title ??
-            session.parent_title ??
-            session.title ??
-            'Now streaming',
-          mediaType: session.media_type,
-          ratingKey: String(
-            session.media_type === 'episode'
-              ? session.grandparent_rating_key ??
-                  session.parent_rating_key ??
-                  session.rating_key ??
-                  ''
-              : session.rating_key ??
-                  session.parent_rating_key ??
-                  session.grandparent_rating_key ??
-                  ''
-          ),
-          thumb:
-            session.thumb ?? session.grandparent_thumb ?? session.parent_thumb,
-        })),
+        currentStreams: (activity.sessions ?? []).map((session) => {
+          const isEpisode = session.media_type === 'episode';
+          const seriesRatingKey = session.grandparent_rating_key
+            ? String(session.grandparent_rating_key)
+            : undefined;
+
+          return {
+            title:
+              session.full_title ??
+              session.grandparent_title ??
+              session.parent_title ??
+              session.title ??
+              'Now streaming',
+            mediaType: session.media_type,
+            ratingKey: String(
+              isEpisode
+                ? session.grandparent_rating_key ??
+                    session.parent_rating_key ??
+                    session.rating_key ??
+                    ''
+                : session.rating_key ??
+                    session.parent_rating_key ??
+                    session.grandparent_rating_key ??
+                    ''
+            ),
+            thumb: isEpisode
+              ? session.grandparent_thumb ??
+                (seriesRatingKey
+                  ? `/library/metadata/${seriesRatingKey}/thumb`
+                  : undefined) ??
+                session.parent_thumb ??
+                session.thumb
+              : session.thumb ??
+                session.grandparent_thumb ??
+                session.parent_thumb,
+          };
+        }),
       };
     } catch (e) {
       logger.error('Something went wrong fetching server stats from Tautulli', {

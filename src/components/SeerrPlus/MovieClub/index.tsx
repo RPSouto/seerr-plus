@@ -73,6 +73,7 @@ const messages = defineMessages('components.SeerrPlus.MovieClub', {
     'No Movie Club vote is active yet. An administrator will select candidates from requested movies available in Plex.',
   edit: 'Edit vote',
   save: 'Save changes',
+  saveDraft: 'Save draft',
   cancel: 'Cancel',
   delete: 'Delete vote',
   deleteConfirm:
@@ -275,7 +276,7 @@ const MovieClub = () => {
     canManage && manualSearch.trim().length >= 2
       ? `/api/v1/seerrplus/movie-club/search?query=${encodeURIComponent(
           manualSearch.trim()
-        )}`
+        )}${session ? `&sessionId=${session.id}` : ''}`
       : null
   );
   const { data: users } = useSWR<{ results: ClubUser[] }>(
@@ -324,10 +325,11 @@ const MovieClub = () => {
     }
   }, [session, isEditing]);
 
-  const payload = () => ({
+  const payload = (draft = false) => ({
     mediaIds: selected,
     whatsappUrl,
     title: voteTitle,
+    ...(draft ? { draft: true } : {}),
     ...(isAdmin
       ? {
           closesAt: new Date(closesAt).toISOString(),
@@ -335,7 +337,9 @@ const MovieClub = () => {
           ...(!session || isPreparation
             ? {
                 startsAt:
-                  startMode === 'scheduled'
+                  draft
+                    ? null
+                    : startMode === 'scheduled'
                     ? new Date(startsAt).toISOString()
                     : null,
               }
@@ -344,10 +348,10 @@ const MovieClub = () => {
       : {}),
   });
 
-  const createSession = async () => {
+  const createSession = async (draft = false) => {
     try {
       setError('');
-      await axios.post('/api/v1/seerrplus/movie-club/sessions', payload());
+      await axios.post('/api/v1/seerrplus/movie-club/sessions', payload(draft));
       setSelected([]);
       setClosesAt(oneWeekFromNow());
       setDeadlineMode('week');
@@ -366,15 +370,15 @@ const MovieClub = () => {
     }
   };
 
-  const updateSession = async () => {
+  const updateSession = async (draft = false) => {
     if (!session) return;
     try {
       setError('');
       await axios.patch(
         `/api/v1/seerrplus/movie-club/sessions/${session.id}`,
-        payload()
+        payload(draft)
       );
-      setIsEditing(false);
+      setIsEditing(draft);
       await mutate();
     } catch (requestError) {
       setError(
@@ -722,7 +726,9 @@ const MovieClub = () => {
                     (selected.length >= 2 && selected.length <= 4)
                   ))
           }
-          onClick={session ? updateSession : createSession}
+          onClick={() =>
+            session ? updateSession(false) : createSession(false)
+          }
         >
           {intl.formatMessage(
             isPreparation
@@ -738,6 +744,17 @@ const MovieClub = () => {
                     : messages.startVoting
           )}
         </Button>
+        {canManage && (isPreparation || !session) && (
+          <Button
+            buttonType="ghost"
+            disabled={!closesAt}
+            onClick={() =>
+              session ? updateSession(true) : createSession(true)
+            }
+          >
+            {intl.formatMessage(messages.saveDraft)}
+          </Button>
+        )}
         {session && !isPreparation && (
           <Button buttonType="ghost" onClick={() => setIsEditing(false)}>
             {intl.formatMessage(messages.cancel)}
