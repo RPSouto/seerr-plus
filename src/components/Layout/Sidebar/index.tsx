@@ -9,6 +9,7 @@ import {
   CogIcon,
   EyeSlashIcon,
   FilmIcon,
+  QueueListIcon,
   TrophyIcon,
   SparklesIcon,
   TvIcon,
@@ -26,6 +27,7 @@ export const menuMessages = defineMessages('components.Layout.Sidebar', {
   browsemovies: 'Movies',
   browsetv: 'Series',
   requests: 'Requests',
+  votes: 'Votes',
   movieclub: 'Movie Club',
   blocklist: 'Blocklist',
   issues: 'Issues',
@@ -77,6 +79,12 @@ const SidebarLinks: SidebarLinkProps[] = [
     messagesKey: 'movieclub',
     svgIcon: <TrophyIcon className="mr-3 h-6 w-6" />,
     activeRegExp: /^\/movie-club/,
+  },
+  {
+    href: '/votes',
+    messagesKey: 'votes',
+    svgIcon: <QueueListIcon className="mr-3 h-6 w-6" />,
+    activeRegExp: /^\/votes/,
   },
   {
     href: '/blocklist',

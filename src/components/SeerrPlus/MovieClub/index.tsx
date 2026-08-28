@@ -91,6 +91,10 @@ const messages = defineMessages('components.SeerrPlus.MovieClub', {
   resolveConfirm:
     'Resolve this vote now? A winner will be selected, or a tie-break vote will start for another 24 hours.',
   history: 'Recent Movie Club films',
+  latestWinner: 'Latest winner',
+  previousWinners: 'Previous winners',
+  activeVote: 'Active vote',
+  manageVote: 'Manage Movie Club vote',
   noHistory: 'No Movie Club winners have been selected yet.',
   tieExtended:
     'There was a tie. Votes were cleared, one candidate was removed, and voting was extended for 24 hours.',
@@ -247,6 +251,127 @@ const CandidateCard = ({
         )}
       </div>
     </div>
+  );
+};
+
+const WinnersSpotlight = ({
+  sessions,
+}: {
+  sessions?: Session[];
+}) => {
+  const intl = useIntl();
+  const winners =
+    sessions
+      ?.map((historicSession) => {
+        const winner = historicSession.candidates.find(
+          (candidate) => candidate.id === historicSession.selectedCandidateId
+        );
+
+        return winner
+          ? {
+              session: historicSession,
+              candidate: winner,
+            }
+          : undefined;
+      })
+      .filter(
+        (
+          item
+        ): item is {
+          session: Session;
+          candidate: Candidate;
+        } => Boolean(item)
+      ) ?? [];
+  const [latestWinner, ...previousWinners] = winners;
+
+  return (
+    <section className="mb-10">
+      <div className="mb-4 flex items-center gap-3">
+        <TrophyIcon className="h-7 w-7 text-amber-300" />
+        <div>
+          <h2 className="text-2xl font-bold text-white">
+            {intl.formatMessage(messages.history)}
+          </h2>
+          <p className="text-sm text-gray-400">
+            {intl.formatMessage(messages.highlightSelected)}
+          </p>
+        </div>
+      </div>
+
+      {latestWinner ? (
+        <>
+          <Link
+            href={`/movie/${latestWinner.candidate.tmdbId}`}
+            className="group grid overflow-hidden rounded-xl border border-amber-500/60 bg-gradient-to-br from-amber-950/60 via-gray-900 to-black shadow-lg transition hover:border-amber-300 lg:grid-cols-[180px,1fr]"
+          >
+            <img
+              src={poster(latestWinner.candidate.posterPath)}
+              alt=""
+              className="h-64 w-full object-cover lg:h-full"
+            />
+            <div className="flex min-w-0 flex-col justify-center p-6">
+              <div className="mb-3 inline-flex w-fit items-center gap-2 rounded-full border border-amber-400/50 bg-amber-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-200">
+                <TrophyIcon className="h-4 w-4" />
+                {intl.formatMessage(messages.latestWinner)}
+              </div>
+              <h3 className="text-3xl font-bold text-white transition group-hover:text-amber-200">
+                {latestWinner.candidate.title}{' '}
+                {latestWinner.candidate.releaseDate
+                  ? `(${latestWinner.candidate.releaseDate.slice(0, 4)})`
+                  : ''}
+              </h3>
+              <p className="mt-3 line-clamp-3 text-sm leading-6 text-gray-300">
+                {latestWinner.candidate.overview ||
+                  intl.formatMessage(messages.noSynopsis)}
+              </p>
+              <p className="mt-4 text-sm text-amber-200">
+                {intl.formatMessage(messages.votes, {
+                  count: latestWinner.candidate.votes,
+                })}
+              </p>
+            </div>
+          </Link>
+
+          {previousWinners.length > 0 && (
+            <div className="mt-6">
+              <h3 className="mb-3 text-lg font-semibold text-white">
+                {intl.formatMessage(messages.previousWinners)}
+              </h3>
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                {previousWinners.map(({ session, candidate }) => (
+                  <Link
+                    key={`winner-${session.id}-${candidate.id}`}
+                    href={`/movie/${candidate.tmdbId}`}
+                    className="group flex gap-3 rounded-lg border border-gray-700 bg-gray-800/60 p-3 transition hover:border-amber-400"
+                  >
+                    <img
+                      src={poster(candidate.posterPath)}
+                      alt=""
+                      className="h-24 w-16 flex-shrink-0 rounded object-cover"
+                    />
+                    <div className="min-w-0">
+                      <div className="truncate font-semibold text-white group-hover:text-amber-200">
+                        {candidate.title}
+                      </div>
+                      <div className="mt-1 text-xs text-gray-400">
+                        {candidate.releaseDate?.slice(0, 4)}
+                      </div>
+                      <div className="mt-2 text-xs text-amber-300">
+                        🏆 Movie Club
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="rounded-lg border border-gray-700 bg-gray-800/60 p-6 text-gray-400">
+          {intl.formatMessage(messages.noHistory)}
+        </div>
+      )}
+    </section>
   );
 };
 
@@ -786,139 +911,93 @@ const MovieClub = () => {
         </div>
       </div>
 
-      {session && !isPreparation && !isEditing ? (
-        <div>
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="text-xl font-semibold text-white">
-                {session.title ||
-                  intl.formatMessage(
-                    session.status === 1
-                      ? messages.filmOfTheWeekHeading
-                      : messages.weeklyVote
-                  )}
-              </h2>
-              <p className="text-sm text-gray-400">
-                {session.status === 0
-                  ? intl.formatMessage(messages.votingCloses, {
-                      date: new Date(session.closesAt).toLocaleString(),
-                    })
-                  : intl.formatMessage(messages.winnerSelected)}{' '}
-                · {intl.formatMessage(messages.votes, { count: session.totalVotes })}
-              </p>
-              {session.curators.length > 0 && (
-                <p className="mt-1 text-sm text-amber-200">
-                  {intl.formatMessage(messages.responsibleUsers)}:{' '}
-                  {session.curators
-                    .map((curator) => curator.displayName)
-                    .join(', ')}
+      <WinnersSpotlight sessions={history?.results} />
+
+      <section>
+        <h2 className="mb-4 text-xl font-semibold text-white">
+          {intl.formatMessage(
+            session && session.status !== 1
+              ? messages.activeVote
+              : messages.manageVote
+          )}
+        </h2>
+        {session && session.status !== 1 && !isPreparation && !isEditing ? (
+          <div>
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="text-lg font-semibold text-white">
+                  {session.title || intl.formatMessage(messages.weeklyVote)}
+                </h3>
+                <p className="text-sm text-gray-400">
+                  {intl.formatMessage(messages.votingCloses, {
+                    date: new Date(session.closesAt).toLocaleString(),
+                  })}{' '}
+                  · {intl.formatMessage(messages.votes, { count: session.totalVotes })}
                 </p>
-              )}
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {session.whatsappUrl && session.status === 1 && (
-                <Button
-                  as="a"
-                  href={session.whatsappUrl}
-                  target="_blank"
-                  buttonType="success"
-                >
-                  <ChatBubbleLeftRightIcon />
-                  {intl.formatMessage(messages.openWhatsapp)}
-                </Button>
-              )}
-              {canManage && (
-                <>
-                  <Button buttonType="ghost" onClick={() => setIsEditing(true)}>
-                    {intl.formatMessage(messages.edit)}
-                  </Button>
-                  {isAdmin && (
-                    <>
-                      <Button buttonType="primary" onClick={startNewVote}>
-                        {intl.formatMessage(messages.newVote)}
-                      </Button>
-                      <Button buttonType="danger" onClick={deleteSession}>
-                        {intl.formatMessage(messages.delete)}
-                      </Button>
-                    </>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-          {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
-          <div className="grid items-stretch gap-4 lg:grid-cols-2">
-            {session.candidates.map((candidate) => (
-              <div key={candidate.id} className="flex h-full flex-col">
-                <CandidateCard
-                  candidate={candidate}
-                  selected={
-                    candidate.id === session.selectedCandidateId ||
-                    candidate.id === session.myVoteCandidateId
-                  }
-                  revealRequesters={
-                    session.status === 1 &&
-                    candidate.id === session.selectedCandidateId
-                  }
-                  disabled={session.status !== 0}
-                  onSelect={
-                    session.status === 0 ? () => vote(candidate.id) : undefined
-                  }
-                />
-                {isAdmin && session.status === 0 && (
-                  <Button
-                    buttonType="ghost"
-                    buttonSize="sm"
-                    className="mt-2"
-                    onClick={() => selectWinner(candidate.id)}
-                  >
-                    {intl.formatMessage(messages.selectWinner)}
-                  </Button>
+                {session.curators.length > 0 && (
+                  <p className="mt-1 text-sm text-amber-200">
+                    {intl.formatMessage(messages.responsibleUsers)}:{' '}
+                    {session.curators
+                      .map((curator) => curator.displayName)
+                      .join(', ')}
+                  </p>
                 )}
               </div>
-            ))}
-          </div>
-        </div>
-      ) : canManage ? (
-        editor
-      ) : (
-        <div className="rounded-lg border border-gray-700 bg-gray-800/60 p-6 text-gray-300">
-          {intl.formatMessage(messages.noActiveVote)}
-        </div>
-      )}
-
-      <section className="mt-10">
-        <h2 className="mb-4 text-xl font-semibold text-white">
-          {intl.formatMessage(messages.history)}
-        </h2>
-        {history?.results.length ? (
-          <div className="grid items-stretch gap-4 lg:grid-cols-2">
-            {history.results.map((historicSession) => {
-              const winner = historicSession.candidates.find(
-                (candidate) =>
-                  candidate.id === historicSession.selectedCandidateId
-              );
-              return winner ? (
-                <CandidateCard
-                  key={historicSession.id}
-                  candidate={winner}
-                  selected
-                  revealRequesters
-                />
-              ) : (
-                <div
-                  key={historicSession.id}
-                  className="rounded-lg border border-gray-700 bg-gray-800/60 p-4 text-gray-400"
-                >
-                  {intl.formatMessage(messages.noHistory)}
+              <div className="flex flex-wrap gap-2">
+                {canManage && (
+                  <>
+                    <Button buttonType="ghost" onClick={() => setIsEditing(true)}>
+                      {intl.formatMessage(messages.edit)}
+                    </Button>
+                    {isAdmin && (
+                      <>
+                        <Button buttonType="primary" onClick={startNewVote}>
+                          {intl.formatMessage(messages.newVote)}
+                        </Button>
+                        <Button buttonType="danger" onClick={deleteSession}>
+                          {intl.formatMessage(messages.delete)}
+                        </Button>
+                      </>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+            {error && <p className="mb-4 text-sm text-red-400">{error}</p>}
+            <div className="grid items-stretch gap-4 lg:grid-cols-2">
+              {session.candidates.map((candidate) => (
+                <div key={candidate.id} className="flex h-full flex-col">
+                  <CandidateCard
+                    candidate={candidate}
+                    selected={
+                      candidate.id === session.selectedCandidateId ||
+                      candidate.id === session.myVoteCandidateId
+                    }
+                    disabled={session.status !== 0}
+                    onSelect={
+                      session.status === 0 ? () => vote(candidate.id) : undefined
+                    }
+                  />
+                  {isAdmin && session.status === 0 && (
+                    <Button
+                      buttonType="ghost"
+                      buttonSize="sm"
+                      className="mt-2"
+                      onClick={() => selectWinner(candidate.id)}
+                    >
+                      {intl.formatMessage(messages.selectWinner)}
+                    </Button>
+                  )}
                 </div>
-              );
-            })}
+              ))}
+            </div>
           </div>
+        ) : canManage ? (
+          editor
         ) : (
-          <p className="text-gray-400">
-            {intl.formatMessage(messages.noHistory)}
-          </p>
+          <div className="rounded-lg border border-gray-700 bg-gray-800/60 p-6 text-gray-300">
+            {intl.formatMessage(messages.noActiveVote)}
+          </div>
         )}
       </section>
     </>

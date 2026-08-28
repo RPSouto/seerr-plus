@@ -162,6 +162,8 @@ class PushoverAgent
     const url = applicationUrl
       ? type === Notification.MOVIE_CLUB
         ? `${applicationUrl}/movie-club`
+        : type === Notification.REMOVAL_VOTE
+          ? `${applicationUrl}/votes`
         : payload.issue
           ? `${applicationUrl}/issues/${payload.issue.id}`
           : payload.media
@@ -171,6 +173,8 @@ class PushoverAgent
     const url_title = url
       ? type === Notification.MOVIE_CLUB
         ? 'Open Movie Club'
+        : type === Notification.REMOVAL_VOTE
+          ? 'Open Votes'
         : intl.formatMessage(
             payload.issue ? globalMessages.viewIssue : globalMessages.viewMedia,
             { applicationTitle }
@@ -254,6 +258,7 @@ class PushoverAgent
         payload.notifyUser.settings.pushoverApplicationToken &&
         payload.notifyUser.settings.pushoverUserKey &&
         (type === Notification.MOVIE_CLUB ||
+          type === Notification.REMOVAL_VOTE ||
           payload.notifyUser.settings.pushoverApplicationToken !==
             settings.options.accessToken ||
           payload.notifyUser.settings.pushoverUserKey !==

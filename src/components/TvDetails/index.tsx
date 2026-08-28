@@ -690,6 +690,7 @@ const TvDetails = ({ tv }: TvDetailsProps) => {
           <div className="flex w-full items-center justify-center sm:w-auto sm:justify-start">
           <RemovalRequestButton
             mediaId={data.mediaInfo?.id}
+            mediaTitle={data.name}
             available={
               data.mediaInfo?.status === MediaStatus.AVAILABLE ||
               data.mediaInfo?.status === MediaStatus.PARTIALLY_AVAILABLE

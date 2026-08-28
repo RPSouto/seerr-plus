@@ -11,6 +11,11 @@ import IssueComment from '@server/entity/IssueComment';
 import Media from '@server/entity/Media';
 import { MediaRequest } from '@server/entity/MediaRequest';
 import MediaRequestParticipant from '@server/entity/MediaRequestParticipant';
+import RemovalVote, { RemovalVoteValue } from '@server/entity/RemovalVote';
+import RemovalVoteParticipant from '@server/entity/RemovalVoteParticipant';
+import RemovalVoteSession, {
+  RemovalVoteSessionStatus,
+} from '@server/entity/RemovalVoteSession';
 import { User } from '@server/entity/User';
 import { Permission } from '@server/lib/permissions';
 import {
@@ -21,6 +26,7 @@ import {
   removeRequestParticipant,
 } from '@server/lib/seerrplus/requests';
 import { removeMediaFromService } from '@server/lib/seerrplus/removals';
+import { sendRemovalVoteNotification } from '@server/lib/seerrplus/removalVoteNotifications';
 import type { NextFunction, Request, Response } from 'express';
 import { Router } from 'express';
 import movieClubRoutes from './movieclub';
@@ -385,6 +391,560 @@ const removalReasonLabels: Record<RemovalRequestReason, string> = {
   [RemovalRequestReason.NO_INTEREST]: 'Content no longer has interest',
   [RemovalRequestReason.OTHER]: 'Other reason',
 };
+
+const normalizeDisplayTitle = (title?: unknown) => {
+  const normalized = typeof title === 'string' ? title.trim() : '';
+
+  return normalized.length > 0 ? normalized.slice(0, 255) : null;
+};
+
+const fallbackRemovalVoteTitle = (media: Media) =>
+  `${media.mediaType === 'tv' ? 'Series' : 'Movie'} #${media.tmdbId}`;
+
+const getRemovalVoteInterestedUsers = async (mediaId: number, is4k: boolean) => {
+  const participations = await getRepository(MediaRequestParticipant)
+    .createQueryBuilder('participant')
+    .innerJoinAndSelect('participant.user', 'user')
+    .innerJoin('participant.request', 'request')
+    .where('request.mediaId = :mediaId', { mediaId })
+    .andWhere('request.is4k = :is4k', { is4k })
+    .getMany();
+
+  return [
+    ...new Map(
+      participations.map(({ user }) => [user.id, user] as const)
+    ).values(),
+  ];
+};
+
+const getOpenRemovalVoteSession = (mediaId: number, is4k: boolean) =>
+  getRepository(RemovalVoteSession)
+    .createQueryBuilder('session')
+    .leftJoinAndSelect('session.media', 'media')
+    .leftJoinAndSelect('session.issue', 'issue')
+    .leftJoinAndSelect('session.participants', 'participant')
+    .leftJoinAndSelect('participant.user', 'participantUser')
+    .leftJoinAndSelect('session.votes', 'vote')
+    .leftJoinAndSelect('session.createdBy', 'createdBy')
+    .leftJoinAndSelect('vote.user', 'voteUser')
+    .where('session.mediaId = :mediaId', { mediaId })
+    .andWhere('session.is4k = :is4k', { is4k })
+    .andWhere('session.status = :status', {
+      status: RemovalVoteSessionStatus.OPEN,
+    })
+    .orderBy('session.createdAt', 'DESC')
+    .getOne();
+
+const mapRemovalVoteSession = async (
+  session: RemovalVoteSession | null,
+  currentUser?: User
+) => {
+  if (!session) {
+    return null;
+  }
+
+  const interestedUsers =
+    session.participants?.map(({ user }) => user) ??
+    (await getRemovalVoteInterestedUsers(session.media.id, session.is4k));
+  const agreeVotes = session.votes?.filter(
+    ({ vote }) => vote === RemovalVoteValue.AGREE
+  );
+  const keepVotes = session.votes?.filter(
+    ({ vote }) => vote === RemovalVoteValue.KEEP
+  );
+  const myVote = session.votes?.find(
+    ({ user }) => user.id === currentUser?.id
+  );
+
+  return {
+    id: session.id,
+    mediaId: session.media.id,
+    media: {
+      id: session.media.id,
+      tmdbId: session.media.tmdbId,
+      mediaType: session.media.mediaType,
+      title: session.displayTitle || fallbackRemovalVoteTitle(session.media),
+    },
+    issueId: session.issue?.id,
+    is4k: session.is4k,
+    reason: session.reason,
+    message: session.message,
+    status: session.status,
+    createdAt: session.createdAt,
+    createdBy: mapUser(session.createdBy),
+    interestedUsers: interestedUsers.map(mapUser),
+    canVote:
+      Boolean(currentUser?.hasPermission(Permission.ADMIN)) ||
+      interestedUsers.some(({ id }) => id === currentUser?.id),
+    myVote: myVote?.vote,
+    totals: {
+      agree: agreeVotes?.length ?? 0,
+      keep: keepVotes?.length ?? 0,
+      total: session.votes?.length ?? 0,
+      interested: interestedUsers.length,
+    },
+    votes:
+      currentUser?.hasPermission(Permission.ADMIN) || session.status !== 0
+        ? session.votes?.map(({ user, vote, createdAt }) => ({
+            user: mapUser(user),
+            vote,
+            createdAt,
+          })) ?? []
+        : [],
+  };
+};
+
+seerrPlusRoutes.get('/votes', async (req, res, next) => {
+  try {
+    if (!req.user) {
+      return next({ status: 401, message: 'Authentication required.' });
+    }
+
+    const isAdmin = req.user.hasPermission(Permission.ADMIN);
+    const sessions = await getRepository(RemovalVoteSession)
+      .createQueryBuilder('session')
+      .leftJoinAndSelect('session.media', 'media')
+      .leftJoinAndSelect('session.issue', 'issue')
+      .leftJoinAndSelect('session.participants', 'participant')
+      .leftJoinAndSelect('participant.user', 'participantUser')
+      .leftJoinAndSelect('session.votes', 'vote')
+      .leftJoinAndSelect('session.createdBy', 'createdBy')
+      .leftJoinAndSelect('vote.user', 'voteUser')
+      .orderBy('session.createdAt', 'DESC')
+      .take(50)
+      .getMany();
+
+    const mappedRemovalVotes = await Promise.all(
+      sessions.map((session) => mapRemovalVoteSession(session, req.user))
+    );
+    const removalVotes: NonNullable<
+      Awaited<ReturnType<typeof mapRemovalVoteSession>>
+    >[] = [];
+    for (const session of mappedRemovalVotes) {
+      if (
+        session &&
+        (isAdmin || session.canVote || session.createdBy.id === req.user.id)
+      ) {
+        removalVotes.push(session);
+      }
+    }
+
+    return res.json({ removalVotes });
+  } catch (error) {
+    return next({
+      status: 500,
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
+seerrPlusRoutes.get(
+  '/media/:mediaId/removal-vote',
+  async (req, res, next) => {
+    try {
+      const mediaId = Number(req.params.mediaId);
+      const is4k = req.query.is4k === 'true';
+      const [media, session, interestedUsers] = await Promise.all([
+        getRepository(Media).findOne({ where: { id: mediaId } }),
+        getOpenRemovalVoteSession(mediaId, is4k),
+        getRemovalVoteInterestedUsers(mediaId, is4k),
+      ]);
+
+      if (!media) {
+        return next({ status: 404, message: 'Media not found.' });
+      }
+
+      const isAdmin = req.user?.hasPermission(Permission.ADMIN) ?? false;
+
+      return res.json({
+        mediaId,
+        is4k,
+        session: await mapRemovalVoteSession(session, req.user),
+        canStart:
+          isAdmin || interestedUsers.some(({ id }) => id === req.user?.id),
+        canAdminRemove: isAdmin,
+      });
+    } catch (error) {
+      return next({
+        status: 500,
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+);
+
+seerrPlusRoutes.post(
+  '/media/:mediaId/removal-votes',
+  async (req, res, next) => {
+    try {
+      if (!req.user) {
+        return next({ status: 401, message: 'Authentication required.' });
+      }
+
+      const mediaId = Number(req.params.mediaId);
+      const is4k = Boolean(req.body?.is4k);
+      const reason = req.body?.reason as RemovalRequestReason;
+      if (!Object.values(RemovalRequestReason).includes(reason)) {
+        return next({ status: 400, message: 'Invalid removal reason.' });
+      }
+
+      const [media, existing, interestedUsers] = await Promise.all([
+        getRepository(Media).findOne({ where: { id: mediaId } }),
+        getOpenRemovalVoteSession(mediaId, is4k),
+        getRemovalVoteInterestedUsers(mediaId, is4k),
+      ]);
+
+      if (!media) {
+        return next({ status: 404, message: 'Media not found.' });
+      }
+      if (existing) {
+        return next({ status: 409, message: 'Removal vote already open.' });
+      }
+
+      const isAdmin = req.user.hasPermission(Permission.ADMIN);
+      if (!isAdmin && !interestedUsers.some(({ id }) => id === req.user?.id)) {
+        return next({
+          status: 403,
+          message: 'Only interested users can start a removal vote.',
+        });
+      }
+
+      const audience = String(req.body?.audience ?? 'interested');
+      if (
+        !['interested', 'selected', 'all'].includes(audience) ||
+        (!isAdmin && audience !== 'interested')
+      ) {
+        return next({ status: 403, message: 'Invalid removal vote audience.' });
+      }
+
+      let votingUsers = interestedUsers;
+      if (isAdmin && audience === 'all') {
+        votingUsers = await getRepository(User).find();
+      } else if (isAdmin && audience === 'selected') {
+        const userIds = Array.isArray(req.body?.userIds)
+          ? [...new Set<number>(req.body.userIds.map(Number))]
+          : [];
+        if (userIds.length === 0) {
+          return next({
+            status: 400,
+            message: 'Select at least one user for this removal vote.',
+          });
+        }
+        votingUsers = await getRepository(User)
+          .createQueryBuilder('user')
+          .where('user.id IN (:...userIds)', { userIds })
+          .getMany();
+      }
+      votingUsers = [
+        ...new Map(votingUsers.map((user) => [user.id, user] as const)).values(),
+      ];
+
+      const details = String(req.body?.message ?? '').trim();
+      const displayTitle = normalizeDisplayTitle(req.body?.mediaTitle);
+      const issue = await getRepository(Issue).save(
+        new Issue({
+          createdBy: req.user,
+          issueType: IssueType.REMOVAL,
+          status: IssueStatus.OPEN,
+          removalReason: reason,
+          removalIs4k: is4k,
+          media,
+          comments: [
+            new IssueComment({
+              user: req.user,
+              message: `Removal vote opened: ${removalReasonLabels[reason]}${
+                details ? `\n\n${details}` : ''
+              }`,
+            }),
+          ],
+        })
+      );
+
+      const session = await getRepository(RemovalVoteSession).save(
+        new RemovalVoteSession({
+          media,
+          issue,
+          createdBy: req.user,
+          is4k,
+          reason,
+          message: details,
+          displayTitle,
+          status: RemovalVoteSessionStatus.OPEN,
+        })
+      );
+      await getRepository(RemovalVoteParticipant).save(
+        votingUsers.map(
+          (user) =>
+            new RemovalVoteParticipant({
+              session,
+              user,
+            })
+        )
+      );
+
+      const recipients = votingUsers.filter(({ id }) => id !== req.user?.id);
+      await sendRemovalVoteNotification({
+        media,
+        mediaTitle: displayTitle,
+        requestedBy: req.user,
+        recipients,
+        reason: removalReasonLabels[reason],
+      });
+
+      return res.status(201).json(
+        await mapRemovalVoteSession(
+          await getOpenRemovalVoteSession(mediaId, is4k),
+          req.user
+        )
+      );
+    } catch (error) {
+      return next({
+        status: 500,
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+);
+
+seerrPlusRoutes.post('/removal-votes/:sessionId/vote', async (req, res, next) => {
+  try {
+    if (!req.user) {
+      return next({ status: 401, message: 'Authentication required.' });
+    }
+
+    const voteValue =
+      req.body?.vote === 'agree'
+        ? RemovalVoteValue.AGREE
+        : req.body?.vote === 'keep'
+          ? RemovalVoteValue.KEEP
+          : undefined;
+    if (!voteValue) {
+      return next({ status: 400, message: 'Invalid vote.' });
+    }
+
+    const session = await getRepository(RemovalVoteSession).findOne({
+      where: { id: Number(req.params.sessionId) },
+      relations: { votes: true },
+    });
+    if (!session) {
+      return next({ status: 404, message: 'Removal vote not found.' });
+    }
+    if (session.status !== RemovalVoteSessionStatus.OPEN) {
+      return next({ status: 409, message: 'Removal vote is closed.' });
+    }
+
+    const participants = await getRepository(RemovalVoteParticipant).find({
+      where: { session: { id: session.id } },
+    });
+    const allowedUsers =
+      participants.length > 0
+        ? participants.map(({ user }) => user)
+        : await getRemovalVoteInterestedUsers(session.media.id, session.is4k);
+    if (
+      !req.user.hasPermission(Permission.ADMIN) &&
+      !allowedUsers.some(({ id }) => id === req.user?.id)
+    ) {
+      return next({
+        status: 403,
+        message: 'Only interested users can vote on this removal.',
+      });
+    }
+
+    const voteRepository = getRepository(RemovalVote);
+    const existing = await voteRepository.findOne({
+      where: {
+        session: { id: session.id },
+        user: { id: req.user.id },
+      },
+    });
+
+    if (existing) {
+      existing.vote = voteValue;
+      await voteRepository.save(existing);
+    } else {
+      await voteRepository.save(
+        new RemovalVote({
+          session,
+          user: req.user,
+          vote: voteValue,
+        })
+      );
+    }
+
+    return res.json(
+      await mapRemovalVoteSession(
+        await getOpenRemovalVoteSession(session.media.id, session.is4k),
+        req.user
+      )
+    );
+  } catch (error) {
+    return next({
+      status: 500,
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
+seerrPlusRoutes.post(
+  '/removal-requests/:issueId/start-vote',
+  async (req, res, next) => {
+    try {
+      if (!req.user?.hasPermission(Permission.ADMIN)) {
+        return next({ status: 403, message: 'Administrator access required.' });
+      }
+
+      const issue = await getRepository(Issue).findOne({
+        where: { id: Number(req.params.issueId) },
+        relations: { comments: true, media: true, createdBy: true },
+      });
+      if (!issue || issue.issueType !== IssueType.REMOVAL) {
+        return next({ status: 404, message: 'Removal request not found.' });
+      }
+      if (issue.status !== IssueStatus.OPEN) {
+        return next({ status: 409, message: 'Removal request already decided.' });
+      }
+
+      const existing = await getOpenRemovalVoteSession(
+        issue.media.id,
+        issue.removalIs4k
+      );
+      if (existing) {
+        return next({ status: 409, message: 'Removal vote already open.' });
+      }
+
+      const displayTitle = normalizeDisplayTitle(req.body?.mediaTitle);
+      const interestedUsers = await getRemovalVoteInterestedUsers(
+        issue.media.id,
+        issue.removalIs4k
+      );
+      const audience = String(req.body?.audience ?? 'interested');
+      if (!['interested', 'selected', 'all'].includes(audience)) {
+        return next({ status: 400, message: 'Invalid removal vote audience.' });
+      }
+
+      let votingUsers = interestedUsers;
+      if (audience === 'all') {
+        votingUsers = await getRepository(User).find();
+      } else if (audience === 'selected') {
+        const userIds = Array.isArray(req.body?.userIds)
+          ? [...new Set<number>(req.body.userIds.map(Number))]
+          : [];
+        if (userIds.length === 0) {
+          return next({
+            status: 400,
+            message: 'Select at least one user for this removal vote.',
+          });
+        }
+        votingUsers = await getRepository(User)
+          .createQueryBuilder('user')
+          .where('user.id IN (:...userIds)', { userIds })
+          .getMany();
+      }
+      votingUsers = [
+        ...new Map(votingUsers.map((user) => [user.id, user] as const)).values(),
+      ];
+
+      const session = await getRepository(RemovalVoteSession).save(
+        new RemovalVoteSession({
+          media: issue.media,
+          issue,
+          createdBy: req.user,
+          is4k: issue.removalIs4k,
+          reason: issue.removalReason,
+          message: String(req.body?.message ?? '').trim() || null,
+          displayTitle,
+          status: RemovalVoteSessionStatus.OPEN,
+        })
+      );
+      await getRepository(RemovalVoteParticipant).save(
+        votingUsers.map(
+          (user) =>
+            new RemovalVoteParticipant({
+              session,
+              user,
+            })
+        )
+      );
+
+      issue.comments.push(
+        new IssueComment({
+          user: req.user,
+          message: `Removal vote started for ${
+            audience === 'all'
+              ? 'all users'
+              : audience === 'selected'
+                ? 'selected users'
+                : 'interested users'
+          }.`,
+        })
+      );
+      await getRepository(Issue).save(issue);
+
+      const recipients = votingUsers.filter(({ id }) => id !== req.user?.id);
+      await sendRemovalVoteNotification({
+        media: issue.media,
+        mediaTitle: displayTitle,
+        requestedBy: issue.createdBy,
+        recipients,
+        reason: issue.removalReason
+          ? removalReasonLabels[issue.removalReason as RemovalRequestReason]
+          : undefined,
+      });
+
+      return res.status(201).json(
+        await mapRemovalVoteSession(
+          await getOpenRemovalVoteSession(issue.media.id, issue.removalIs4k),
+          req.user
+        )
+      );
+    } catch (error) {
+      return next({
+        status: 500,
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+);
+
+seerrPlusRoutes.post('/removal-votes/:sessionId/close', async (req, res, next) => {
+  try {
+    if (!req.user?.hasPermission(Permission.ADMIN)) {
+      return next({ status: 403, message: 'Administrator access required.' });
+    }
+
+    const repository = getRepository(RemovalVoteSession);
+    const session = await repository.findOne({
+      where: { id: Number(req.params.sessionId) },
+      relations: { issue: { comments: true }, media: true },
+    });
+    if (!session) {
+      return next({ status: 404, message: 'Removal vote not found.' });
+    }
+    if (session.status !== RemovalVoteSessionStatus.OPEN) {
+      return next({ status: 409, message: 'Removal vote is already closed.' });
+    }
+
+    session.status = RemovalVoteSessionStatus.CLOSED;
+    await repository.save(session);
+
+    if (session.issue) {
+      session.issue.comments.push(
+        new IssueComment({
+          user: req.user,
+          message: 'Removal vote closed by administrator.',
+        })
+      );
+      await getRepository(Issue).save(session.issue);
+    }
+
+    return res.json(await mapRemovalVoteSession(session, req.user));
+  } catch (error) {
+    return next({
+      status: 500,
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
 
 seerrPlusRoutes.post(
   '/media/:mediaId/removal-requests',

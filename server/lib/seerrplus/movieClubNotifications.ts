@@ -29,8 +29,10 @@ export type MovieClubEmailText =
 
 interface MovieClubEmailOptions {
   actionLabel?: MovieClubEmailText;
+  actionUrl?: string;
   movies?: MovieClubEmailMovie[];
   highlightMovie?: MovieClubEmailMovie;
+  notificationType?: Notification;
 }
 
 const posterUrl = (posterPath?: string) =>
@@ -90,7 +92,8 @@ export const sendMovieClubEmail = async (
       ? `${applicationUrl}/movie-club`
       : undefined;
     const highlightMovie = options.highlightMovie ?? options.movies?.[0];
-    const actionUrl = movieClubUrl;
+    const actionUrl = options.actionUrl ?? movieClubUrl;
+    const notificationType = options.notificationType ?? Notification.MOVIE_CLUB;
     const movies =
       options.movies?.map((movie) => ({
         ...movie,
@@ -104,7 +107,7 @@ export const sendMovieClubEmail = async (
             (!user.settings ||
               user.settings.hasNotificationType(
                 NotificationAgentKey.EMAIL,
-                Notification.MOVIE_CLUB
+                notificationType
               ))
         )
       : [];
@@ -150,19 +153,22 @@ export const sendMovieClubEmail = async (
       users.flatMap((user) => {
         const portuguese = isPortuguese(user);
         const labels = localizedLabels(portuguese);
-        const notificationBody = movieClubUrl
-          ? `${localizedText(body, portuguese)}\n\n${labels.openMovieClub}: ${movieClubUrl}`
+        const actionLabel = options.actionLabel
+          ? localizedText(options.actionLabel, portuguese)
+          : labels.openMovieClub;
+        const notificationBody = actionUrl
+          ? `${localizedText(body, portuguese)}\n\n${actionLabel}: ${actionUrl}`
           : localizedText(body, portuguese);
 
         return [
-          pushbullet.send(Notification.MOVIE_CLUB, {
+          pushbullet.send(notificationType, {
             subject: localizedText(subject, portuguese),
             message: notificationBody,
             notifySystem: false,
             notifyAdmin: false,
             notifyUser: user,
           }),
-          pushover.send(Notification.MOVIE_CLUB, {
+          pushover.send(notificationType, {
             subject: localizedText(subject, portuguese),
             message: notificationBody,
             notifySystem: false,
@@ -171,7 +177,7 @@ export const sendMovieClubEmail = async (
           }),
           ...(webpush.shouldSend()
             ? [
-                webpush.send(Notification.MOVIE_CLUB, {
+                webpush.send(notificationType, {
                   subject: localizedText(subject, portuguese),
                   message: localizedText(body, portuguese),
                   notifySystem: false,
@@ -185,12 +191,15 @@ export const sendMovieClubEmail = async (
       })
     );
     const fallbackSubject = localizedText(subject, false);
-    const fallbackBody = movieClubUrl
-      ? `${localizedText(body, false)}\n\nOpen Movie Club: ${movieClubUrl}`
+    const fallbackActionLabel = options.actionLabel
+      ? localizedText(options.actionLabel, false)
+      : 'Open Movie Club';
+    const fallbackBody = actionUrl
+      ? `${localizedText(body, false)}\n\n${fallbackActionLabel}: ${actionUrl}`
       : localizedText(body, false);
     const discord = new DiscordAgent();
     const discordResult = discord.shouldSend()
-      ? await discord.send(Notification.MOVIE_CLUB, {
+      ? await discord.send(notificationType, {
           subject: fallbackSubject,
           message: fallbackBody,
           notifySystem: true,

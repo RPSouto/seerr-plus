@@ -30,9 +30,11 @@ const messages = defineMessages('notifications.agents.webpush', {
   issueResolved: 'The {issueType} was marked as resolved by {userName}!',
   issueReopened: 'The {issueType} was reopened by {userName}.',
   movieClub: 'Movie Club update',
+  removalVote: 'Removal vote update',
   viewIssue: 'View Issue',
   viewMedia: 'View Media',
   viewMovieClub: 'Open Movie Club',
+  viewVotes: 'Open Votes',
 });
 
 interface PushNotificationPayload {
@@ -171,6 +173,10 @@ class WebPushAgent
         message =
           payload.message ?? intl.formatMessage(messages.movieClub);
         break;
+      case Notification.REMOVAL_VOTE:
+        message =
+          payload.message ?? intl.formatMessage(messages.removalVote);
+        break;
       default:
         return {
           notificationType: Notification[type],
@@ -181,6 +187,8 @@ class WebPushAgent
     const actionUrl =
       type === Notification.MOVIE_CLUB
         ? '/movie-club'
+        : type === Notification.REMOVAL_VOTE
+          ? '/votes'
         : payload.issue
           ? `/issues/${payload.issue.id}`
           : payload.media
@@ -191,6 +199,8 @@ class WebPushAgent
       ? intl.formatMessage(
           type === Notification.MOVIE_CLUB
             ? messages.viewMovieClub
+            : type === Notification.REMOVAL_VOTE
+              ? messages.viewVotes
             : payload.issue
               ? messages.viewIssue
               : messages.viewMedia

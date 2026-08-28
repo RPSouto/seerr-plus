@@ -82,7 +82,35 @@ const messages = defineMessages('components.IssueDetails', {
   removalRejected: 'Removal request rejected.',
   removalDecisionFailed: 'Unable to process the removal request.',
   removalRequest: 'Removal Request',
+  startRemovalVote: 'Start Voting',
+  closeRemovalVote: 'Close Voting',
+  removalVoteStarted: 'Removal vote started.',
+  removalVoteClosed: 'Removal vote closed.',
+  removalVoteFailed: 'Unable to update the removal vote.',
+  removalVoteSummary: '{agree} remove · {keep} keep · {total}/{invited} voted',
+  removalVoteAudience: 'Send vote to',
+  removalVoteAudienceInterested: 'All interested users',
+  removalVoteAudienceSelected: 'Selected users',
+  removalVoteAudienceAll: 'All users',
+  removalVoteSelectedUsers: 'Selected users',
+  removalVoteNoUsersSelected: 'Select at least one user.',
 });
+
+interface RemovalVoteResponse {
+  session?: {
+    id: number;
+    totals: {
+      agree: number;
+      keep: number;
+      total: number;
+      interested: number;
+    };
+  } | null;
+}
+
+interface UsersResponse {
+  results: { id: number; displayName: string }[];
+}
 
 const isMovie = (movie: MovieDetails | TvDetails): movie is MovieDetails => {
   return (movie as MovieDetails).title !== undefined;
@@ -93,6 +121,13 @@ const IssueDetails = () => {
   const router = useRouter();
   const intl = useIntl();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showRemovalVoteModal, setShowRemovalVoteModal] = useState(false);
+  const [removalVoteAudience, setRemovalVoteAudience] = useState<
+    'interested' | 'selected' | 'all'
+  >('interested');
+  const [selectedRemovalVoteUserIds, setSelectedRemovalVoteUserIds] = useState<
+    number[]
+  >([]);
   const { user: currentUser, hasPermission } = useUser();
   const { data: issueData, mutate: revalidateIssue } = useSWR<Issue>(
     `/api/v1/issue/${router.query.issueId}`
@@ -100,6 +135,17 @@ const IssueDetails = () => {
   const { data, error } = useSWR<MovieDetails | TvDetails>(
     issueData?.media.tmdbId
       ? `/api/v1/${issueData.media.mediaType}/${issueData.media.tmdbId}`
+      : null
+  );
+  const { data: removalVoteData, mutate: revalidateRemovalVote } =
+    useSWR<RemovalVoteResponse>(
+      issueData?.issueType === IssueType.REMOVAL
+        ? `/api/v1/seerrplus/media/${issueData.media.id}/removal-vote?is4k=${issueData.removalIs4k}`
+        : null
+    );
+  const { data: usersData } = useSWR<UsersResponse>(
+    hasPermission(Permission.ADMIN)
+      ? '/api/v1/seerrplus/movie-club/users'
       : null
   );
 
@@ -191,6 +237,65 @@ const IssueDetails = () => {
     }
   };
 
+  const startRemovalVote = async () => {
+    try {
+      await axios.post(
+        `/api/v1/seerrplus/removal-requests/${issueData.id}/start-vote`,
+        {
+          audience: removalVoteAudience,
+          userIds:
+            removalVoteAudience === 'selected'
+              ? selectedRemovalVoteUserIds
+              : [],
+          mediaTitle: title,
+        }
+      );
+      addToast(intl.formatMessage(messages.removalVoteStarted), {
+        appearance: 'success',
+        autoDismiss: true,
+      });
+      setShowRemovalVoteModal(false);
+      revalidateIssue();
+      revalidateRemovalVote();
+    } catch {
+      addToast(intl.formatMessage(messages.removalVoteFailed), {
+        appearance: 'error',
+        autoDismiss: true,
+      });
+    }
+  };
+
+  const toggleRemovalVoteUser = (userId: number) => {
+    setSelectedRemovalVoteUserIds((current) =>
+      current.includes(userId)
+        ? current.filter((id) => id !== userId)
+        : [...current, userId]
+    );
+  };
+
+  const closeRemovalVote = async () => {
+    if (!removalVoteData?.session) {
+      return;
+    }
+
+    try {
+      await axios.post(
+        `/api/v1/seerrplus/removal-votes/${removalVoteData.session.id}/close`
+      );
+      addToast(intl.formatMessage(messages.removalVoteClosed), {
+        appearance: 'success',
+        autoDismiss: true,
+      });
+      revalidateIssue();
+      revalidateRemovalVote();
+    } catch {
+      addToast(intl.formatMessage(messages.removalVoteFailed), {
+        appearance: 'error',
+        autoDismiss: true,
+      });
+    }
+  };
+
   const deleteIssue = async () => {
     try {
       await axios.delete(`/api/v1/issue/${issueData.id}`);
@@ -238,6 +343,86 @@ const IssueDetails = () => {
           okButtonType="danger"
         >
           {intl.formatMessage(messages.deleteissueconfirm)}
+        </Modal>
+      </Transition>
+      <Transition
+        as="div"
+        enter="transition-opacity duration-300"
+        enterFrom="opacity-0"
+        enterTo="opacity-100"
+        leave="transition-opacity duration-300"
+        leaveFrom="opacity-100"
+        leaveTo="opacity-0"
+        show={showRemovalVoteModal}
+      >
+        <Modal
+          title={intl.formatMessage(messages.startRemovalVote)}
+          onCancel={() => setShowRemovalVoteModal(false)}
+          onOk={() => startRemovalVote()}
+          okText={intl.formatMessage(messages.startRemovalVote)}
+          okButtonType="primary"
+          okDisabled={
+            removalVoteAudience === 'selected' &&
+            selectedRemovalVoteUserIds.length === 0
+          }
+        >
+          <div className="space-y-4">
+            <div>
+              <label className="text-label" htmlFor="removal-vote-audience">
+                {intl.formatMessage(messages.removalVoteAudience)}
+              </label>
+              <select
+                id="removal-vote-audience"
+                value={removalVoteAudience}
+                onChange={(event) =>
+                  setRemovalVoteAudience(
+                    event.target.value as 'interested' | 'selected' | 'all'
+                  )
+                }
+              >
+                <option value="interested">
+                  {intl.formatMessage(messages.removalVoteAudienceInterested)}
+                </option>
+                <option value="selected">
+                  {intl.formatMessage(messages.removalVoteAudienceSelected)}
+                </option>
+                <option value="all">
+                  {intl.formatMessage(messages.removalVoteAudienceAll)}
+                </option>
+              </select>
+            </div>
+            {removalVoteAudience === 'selected' && (
+              <div className="rounded-md border border-gray-700 bg-gray-900/40 p-3">
+                <div className="mb-2 text-sm font-semibold text-gray-200">
+                  {intl.formatMessage(messages.removalVoteSelectedUsers)}
+                </div>
+                <div className="grid max-h-64 gap-2 overflow-y-auto sm:grid-cols-2">
+                  {usersData?.results.map((availableUser) => (
+                    <label
+                      key={availableUser.id}
+                      className="flex items-center gap-2 text-sm text-gray-200"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedRemovalVoteUserIds.includes(
+                          availableUser.id
+                        )}
+                        onChange={() => toggleRemovalVoteUser(availableUser.id)}
+                      />
+                      <span className="truncate">
+                        {availableUser.displayName}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                {selectedRemovalVoteUserIds.length === 0 && (
+                  <p className="mt-2 text-xs text-yellow-300">
+                    {intl.formatMessage(messages.removalVoteNoUsersSelected)}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
         </Modal>
       </Transition>
       {data.backdropPath && (
@@ -522,30 +707,60 @@ const IssueDetails = () => {
                   </div>
                 )}
                 {issueData.status === IssueStatus.OPEN &&
-                  hasPermission(
-                    [Permission.MANAGE_REQUESTS, Permission.MANAGE_ISSUES],
-                    { type: 'or' }
-                  ) && (
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      <Button
-                        buttonType="danger"
-                        onClick={() => decideRemoval('approve')}
-                      >
-                        <CheckCircleIcon />
-                        <span>
-                          {intl.formatMessage(messages.approveRemoval)}
-                        </span>
-                      </Button>
-                      <Button
-                        buttonType="default"
-                        onClick={() => decideRemoval('reject')}
-                      >
-                        <XCircleIcon />
-                        <span>
-                          {intl.formatMessage(messages.rejectRemoval)}
-                        </span>
-                      </Button>
-                    </div>
+                  hasPermission(Permission.ADMIN) && (
+                    <>
+                      {removalVoteData?.session && (
+                        <div className="mt-3 rounded-md border border-yellow-400/30 bg-yellow-400/10 p-3 text-sm text-yellow-100">
+                          {intl.formatMessage(messages.removalVoteSummary, {
+                            agree: removalVoteData.session.totals.agree,
+                            keep: removalVoteData.session.totals.keep,
+                            total: removalVoteData.session.totals.total,
+                            invited: removalVoteData.session.totals.interested,
+                          })}
+                        </div>
+                      )}
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        <Button
+                          buttonType="danger"
+                          onClick={() => decideRemoval('approve')}
+                        >
+                          <CheckCircleIcon />
+                          <span>
+                            {intl.formatMessage(messages.approveRemoval)}
+                          </span>
+                        </Button>
+                        <Button
+                          buttonType="default"
+                          onClick={() => decideRemoval('reject')}
+                        >
+                          <XCircleIcon />
+                          <span>
+                            {intl.formatMessage(messages.rejectRemoval)}
+                          </span>
+                        </Button>
+                        {removalVoteData?.session ? (
+                          <Button
+                            buttonType="ghost"
+                            onClick={() => closeRemovalVote()}
+                          >
+                            <XCircleIcon />
+                            <span>
+                              {intl.formatMessage(messages.closeRemovalVote)}
+                            </span>
+                          </Button>
+                        ) : (
+                          <Button
+                            buttonType="primary"
+                            onClick={() => setShowRemovalVoteModal(true)}
+                          >
+                            <PlayIcon />
+                            <span>
+                              {intl.formatMessage(messages.startRemovalVote)}
+                            </span>
+                          </Button>
+                        )}
+                      </div>
+                    </>
                   )}
               </div>
             )}

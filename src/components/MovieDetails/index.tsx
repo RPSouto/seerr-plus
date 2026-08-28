@@ -678,6 +678,7 @@ const MovieDetails = ({ movie }: MovieDetailsProps) => {
           />
           <RemovalRequestButton
             mediaId={data.mediaInfo?.id}
+            mediaTitle={data.title}
             available={data.mediaInfo?.status === MediaStatus.AVAILABLE}
             available4k={data.mediaInfo?.status4k === MediaStatus.AVAILABLE}
             managed={
