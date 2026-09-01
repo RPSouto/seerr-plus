@@ -40,6 +40,9 @@ export class MovieClubSession {
   @ManyToOne(() => Media, { nullable: true, eager: true, onDelete: 'SET NULL' })
   public selectedMedia?: Media | null;
 
+  @DbAwareColumn({ type: 'datetime', nullable: true })
+  public selectedAt?: Date | null;
+
   @ManyToOne(() => User, { eager: true, onDelete: 'CASCADE' })
   public createdBy: User;
 

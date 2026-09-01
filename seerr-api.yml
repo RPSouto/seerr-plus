@@ -8686,6 +8686,38 @@ paths:
           description: Eligible Movie Club candidates
         '403':
           description: Administrator permission required
+  /seerrplus/movie-club/random:
+    get:
+      summary: Pick four random eligible Movie Club candidates by theme
+      description: Returns up to four available Plex movies from the eligible Movie Club pool, using predefined themes and falling back to community-ranked candidates when needed.
+      tags:
+        - seerrplus
+      parameters:
+        - in: query
+          name: theme
+          required: false
+          schema:
+            type: string
+            enum:
+              - community
+              - horror
+              - action
+              - comedy
+              - sci-fi
+              - drama
+              - family
+              - hidden-gems
+        - in: query
+          name: sessionId
+          required: false
+          schema:
+            type: number
+          description: Existing draft/session id when a responsible user generates candidates while editing.
+      responses:
+        '200':
+          description: Random Movie Club candidates and available themes
+        '403':
+          description: Movie Club manager access required
   /seerrplus/movie-club/search:
     get:
       summary: Search available Plex movies for Movie Club voting

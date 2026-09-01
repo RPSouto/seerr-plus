@@ -1,5 +1,48 @@
 # Seerr+ Changelog
 
+## seerr-plus-v1.8.310
+
+- Fix Movie Club scheduled vote saves by inserting candidates with explicit SQL column names.
+- Prevent SQLite from receiving candidate rows without `sessionId` when scheduling or editing Movie Club votes.
+- Treat only draft, scheduled, and voting sessions as the current editable Movie Club session.
+- Keep selected winners in history only, so creating or closing a new vote cannot alter a historical winner.
+- Reload created/updated sessions by their own id instead of looking up any current session.
+- Fix SQLite curator assignment by calling the database type helper correctly.
+
+## seerr-plus-v1.8.305
+
+- Restore Movie Club history visibility by using a simpler SQLite-safe winner ordering query.
+- Keep the Movie Club badge on every film that has won at least once.
+
+## seerr-plus-v1.8.300
+
+- Fix Movie Club winner history ordering by storing when a winner is selected.
+- Sort recent Movie Club winners by winner selection time instead of vote creation time.
+- Backfill existing Movie Club winners with their creation date as a safe fallback.
+- Include the Movie Club winner selection date in the API response.
+
+## seerr-plus-v1.8.295
+
+- Fix Movie Club candidate creation in SQLite by inserting candidates with explicit session/media relation ids.
+- Prevent `SQLITE_CONSTRAINT: NOT NULL constraint failed: movie_club_candidate.sessionId` when creating or editing Movie Club votes.
+
+## seerr-plus-v1.8.290
+
+- Add predefined Movie Club themes so administrators and responsible users can generate four random voting candidates from eligible Plex movies.
+- Add a new Movie Club random candidate endpoint with manager/curator access checks.
+- Prioritize weekly suggestions and interested-user counts while still randomizing themed selections.
+- Add English and Portuguese UI strings for the Movie Club theme picker.
+- Document the new random Movie Club candidate API route.
+
+## seerr-plus-v1.8.285
+
+- Harden Seerr+ routes by validating request, media, session, issue, candidate, and user ids before querying the database.
+- Optimize the Votes endpoint by filtering non-admin removal vote visibility in SQL instead of loading recent sessions and filtering everything in memory.
+- Harden the Tautulli stream image proxy so it only accepts internal Plex metadata image paths and cannot be used with arbitrary external URLs.
+- Add timeout and response-size limits to Tautulli image fetches to avoid slow or oversized proxy responses.
+- Optimize Movie Club manual search by limiting search input/results and checking previous winners in one batch query instead of per result.
+- Limit Movie Club free-text fields and selected user/candidate arrays to safer bounds.
+
 ## seerr-plus-v1.8.280
 
 - Hide the Movie Club card from the Votes page when the Movie Club voting period has already ended or the session has already moved to winner/history state.

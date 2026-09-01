@@ -32,6 +32,7 @@ type Session = {
   closesAt: string;
   whatsappUrl?: string;
   selectedCandidateId?: number;
+  selectedAt?: string;
   candidates: Candidate[];
   totalVotes: number;
   myVoteCandidateId?: number;
@@ -40,6 +41,7 @@ type Session = {
 };
 type ClubData = { session: Session | null };
 type ClubUser = { id: number; displayName: string; avatar?: string };
+type MovieClubTheme = { id: string; label: string };
 
 const messages = defineMessages('components.SeerrPlus.MovieClub', {
   title: 'Movie Club',
@@ -123,6 +125,22 @@ const messages = defineMessages('components.SeerrPlus.MovieClub', {
   manualSearchNoResults: 'No available Plex movie matches found.',
   previousWinner:
     'This movie has already won Movie Club. You can still add it if you want.',
+  randomTheme: 'Theme picker',
+  randomThemeHelp:
+    'Pick a theme and Seerr+ will suggest four random eligible films from Plex.',
+  randomThemeCommunity: 'Community picks',
+  randomThemeHorror: 'Horror night',
+  randomThemeAction: 'Action night',
+  randomThemeComedy: 'Comedy night',
+  randomThemeScifi: 'Sci-fi night',
+  randomThemeDrama: 'Drama night',
+  randomThemeFamily: 'Family night',
+  randomThemeHiddenGems: 'Hidden gems',
+  randomPick: 'Choose 4 random films',
+  randomPickLoading: 'Choosing films…',
+  randomPickFailed: 'Unable to choose random Movie Club films.',
+  randomPickNotEnough:
+    'Seerr+ could not find four eligible films for this theme. It selected the available matches.',
 });
 
 const poster = (path?: string) =>
@@ -147,6 +165,28 @@ const oneWeekAfter = (value: string) =>
 
 const oneHourFromNow = () =>
   toLocalInput(new Date(Date.now() + 60 * 60 * 1000).toISOString());
+
+const movieClubThemeMessage = (themeId: string) => {
+  switch (themeId) {
+    case 'horror':
+      return messages.randomThemeHorror;
+    case 'action':
+      return messages.randomThemeAction;
+    case 'comedy':
+      return messages.randomThemeComedy;
+    case 'sci-fi':
+      return messages.randomThemeScifi;
+    case 'drama':
+      return messages.randomThemeDrama;
+    case 'family':
+      return messages.randomThemeFamily;
+    case 'hidden-gems':
+      return messages.randomThemeHiddenGems;
+    case 'community':
+    default:
+      return messages.randomThemeCommunity;
+  }
+};
 
 export const MovieClubHighlight = () => {
   const intl = useIntl();
@@ -420,6 +460,18 @@ const MovieClub = () => {
   const [startsAt, setStartsAt] = useState('');
   const [whatsappUrl, setWhatsappUrl] = useState('');
   const [voteTitle, setVoteTitle] = useState('');
+  const [randomTheme, setRandomTheme] = useState('community');
+  const [randomThemes, setRandomThemes] = useState<MovieClubTheme[]>([
+    { id: 'community', label: 'Community picks' },
+    { id: 'horror', label: 'Horror night' },
+    { id: 'action', label: 'Action night' },
+    { id: 'comedy', label: 'Comedy night' },
+    { id: 'sci-fi', label: 'Sci-fi night' },
+    { id: 'drama', label: 'Drama night' },
+    { id: 'family', label: 'Family night' },
+    { id: 'hidden-gems', label: 'Hidden gems' },
+  ]);
+  const [isRandomPickLoading, setIsRandomPickLoading] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -533,6 +585,44 @@ const MovieClub = () => {
     await Promise.all([mutate(), mutateHistory()]);
   };
 
+  const chooseRandomTheme = async () => {
+    try {
+      setError('');
+      setIsRandomPickLoading(true);
+      const response = await axios.get<{
+        themes?: MovieClubTheme[];
+        results: Candidate[];
+      }>(
+        `/api/v1/seerrplus/movie-club/random?theme=${encodeURIComponent(
+          randomTheme
+        )}${session ? `&sessionId=${session.id}` : ''}`
+      );
+      if (response.data.themes?.length) {
+        setRandomThemes(response.data.themes);
+      }
+      const results = response.data.results ?? [];
+      setSelected(results.map((candidate) => candidate.mediaId).slice(0, 4));
+      if (results.length < 4) {
+        window.alert(intl.formatMessage(messages.randomPickNotEnough));
+      }
+      if (!voteTitle.trim() && randomTheme !== 'community') {
+        setVoteTitle(intl.formatMessage(movieClubThemeMessage(randomTheme)));
+      }
+      if (results.some((candidate) => candidate.hasWonMovieClub)) {
+        window.alert(intl.formatMessage(messages.previousWinner));
+      }
+    } catch (requestError) {
+      setError(
+        axios.isAxiosError(requestError)
+          ? requestError.response?.data?.message ??
+              intl.formatMessage(messages.randomPickFailed)
+          : intl.formatMessage(messages.randomPickFailed)
+      );
+    } finally {
+      setIsRandomPickLoading(false);
+    }
+  };
+
   const resolveVote = async () => {
     if (
       !session ||
@@ -616,6 +706,42 @@ const MovieClub = () => {
       <p className="mt-2 text-sm text-gray-400">
         {intl.formatMessage(messages.manualSearchHelp)}
       </p>
+      {canManage && (
+        <div className="mt-4 rounded-lg border border-amber-500/30 bg-amber-950/20 p-3">
+          <div className="flex flex-col gap-3 md:flex-row md:items-end">
+            <div className="min-w-0 flex-1">
+              <label className="mb-1 block text-sm font-semibold text-white">
+                {intl.formatMessage(messages.randomTheme)}
+              </label>
+              <select
+                className="w-full rounded border border-gray-600 bg-gray-900 px-3 py-2 text-white"
+                value={randomTheme}
+                onChange={(event) => setRandomTheme(event.target.value)}
+              >
+                {randomThemes.map((theme) => (
+                  <option key={theme.id} value={theme.id}>
+                    {intl.formatMessage(movieClubThemeMessage(theme.id))}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-gray-400">
+                {intl.formatMessage(messages.randomThemeHelp)}
+              </p>
+            </div>
+            <Button
+              buttonType="primary"
+              disabled={isRandomPickLoading}
+              onClick={chooseRandomTheme}
+            >
+              {intl.formatMessage(
+                isRandomPickLoading
+                  ? messages.randomPickLoading
+                  : messages.randomPick
+              )}
+            </Button>
+          </div>
+        </div>
+      )}
       {manualSearch.trim().length >= 2 && isManualSearchLoading && (
         <p className="mt-3 text-sm text-gray-400">
           {intl.formatMessage(messages.manualSearchLoading)}

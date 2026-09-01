@@ -14,6 +14,7 @@ This fork keeps the original Seerr request flow as intact as possible and adds S
 - Removal requests notify admins and interested users first; admins can then remove, reject, start a community vote, or close that vote at any time.
 - Users can opt in to publicly showing that they requested available media.
 
+<<<<<<< HEAD
 Current Seerr+ release: `seerr-plus-v1.8.195`.
 
 ## What Plus adds
@@ -186,3 +187,6 @@ Seerr team.
 - Upstream project: [seerr-team/seerr](https://github.com/seerr-team/seerr)
 - Seerr+ repository: [RPSouto/seerr-plus](https://github.com/RPSouto/seerr-plus)
 - License: [MIT](./LICENSE)
+=======
+Current Seerr+ release: `seerr-plus-v1.8.310`.
+>>>>>>> bf1c23ee (Stabilize Movie Club voting sessions)
