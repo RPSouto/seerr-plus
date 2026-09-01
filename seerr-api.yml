@@ -8442,6 +8442,150 @@ paths:
           description: Insufficient permission
         '404':
           description: Participant not found
+  /seerrplus/media/{mediaId}/removal-vote:
+    get:
+      summary: Get the active Seerr+ removal vote for a media item
+      tags:
+        - seerrplus
+      parameters:
+        - in: path
+          name: mediaId
+          required: true
+          schema:
+            type: number
+        - in: query
+          name: is4k
+          required: false
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Active removal vote state for the media item
+        '404':
+          description: Media not found
+  /seerrplus/media/{mediaId}/removal-votes:
+    post:
+      summary: Start a Seerr+ removal vote for interested users
+      tags:
+        - seerrplus
+      parameters:
+        - in: path
+          name: mediaId
+          required: true
+          schema:
+            type: number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason:
+                  type: string
+                  enum: [free_space, no_interest, other]
+                message:
+                  type: string
+                is4k:
+                  type: boolean
+                audience:
+                  type: string
+                  enum: [interested, selected, all]
+                  description: Admin-only audience selector. Non-admin users always use interested users.
+                userIds:
+                  type: array
+                  description: Admin-only selected users when audience is selected.
+                  items:
+                    type: number
+      responses:
+        '201':
+          description: Removal vote created and interested users notified
+        '403':
+          description: User is not allowed to start this removal vote
+        '409':
+          description: Removal vote already open
+  /seerrplus/removal-votes/{sessionId}/vote:
+    post:
+      summary: Vote on a Seerr+ removal vote
+      tags:
+        - seerrplus
+      parameters:
+        - in: path
+          name: sessionId
+          required: true
+          schema:
+            type: number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [vote]
+              properties:
+                vote:
+                  type: string
+                  enum: [agree, keep]
+      responses:
+        '200':
+          description: Removal vote saved
+        '403':
+          description: User is not allowed to vote
+        '404':
+          description: Removal vote not found
+  /seerrplus/removal-votes/{sessionId}/close:
+    post:
+      summary: Close an active Seerr+ removal vote
+      tags:
+        - seerrplus
+      parameters:
+        - in: path
+          name: sessionId
+          required: true
+          schema:
+            type: number
+      responses:
+        '200':
+          description: Removal vote closed
+        '403':
+          description: Administrator permission required
+        '404':
+          description: Removal vote not found
+  /seerrplus/removal-requests/{issueId}/start-vote:
+    post:
+      summary: Start a removal vote from an existing removal request
+      tags:
+        - seerrplus
+      parameters:
+        - in: path
+          name: issueId
+          required: true
+          schema:
+            type: number
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                audience:
+                  type: string
+                  enum: [interested, selected, all]
+                userIds:
+                  type: array
+                  items:
+                    type: number
+                message:
+                  type: string
+      responses:
+        '201':
+          description: Removal vote started
+        '403':
+          description: Administrator permission required
+        '404':
+          description: Removal request not found
   /seerrplus/media/{mediaId}/removal-requests:
     post:
       summary: Request removal of available content
@@ -8515,6 +8659,17 @@ paths:
       responses:
         '200':
           description: Active Movie Club session or null
+  /seerrplus/votes:
+    get:
+      summary: Get Seerr+ vote dashboard data
+      description: Returns Movie Club and removal vote data visible to the current user.
+      tags:
+        - seerrplus
+      responses:
+        '200':
+          description: Vote dashboard data
+        '401':
+          description: Authentication required
   /seerrplus/movie-club/eligible:
     get:
       summary: List requested movies available in Plex for Movie Club voting
@@ -8531,6 +8686,38 @@ paths:
           description: Eligible Movie Club candidates
         '403':
           description: Administrator permission required
+  /seerrplus/movie-club/random:
+    get:
+      summary: Pick four random eligible Movie Club candidates by theme
+      description: Returns up to four available Plex movies from the eligible Movie Club pool, using predefined themes and falling back to community-ranked candidates when needed.
+      tags:
+        - seerrplus
+      parameters:
+        - in: query
+          name: theme
+          required: false
+          schema:
+            type: string
+            enum:
+              - community
+              - horror
+              - action
+              - comedy
+              - sci-fi
+              - drama
+              - family
+              - hidden-gems
+        - in: query
+          name: sessionId
+          required: false
+          schema:
+            type: number
+          description: Existing draft/session id when a responsible user generates candidates while editing.
+      responses:
+        '200':
+          description: Random Movie Club candidates and available themes
+        '403':
+          description: Movie Club manager access required
   /seerrplus/movie-club/search:
     get:
       summary: Search available Plex movies for Movie Club voting

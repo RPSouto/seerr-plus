@@ -198,6 +198,8 @@ class DiscordAgent
     const url = applicationUrl
       ? type === Notification.MOVIE_CLUB
         ? `${applicationUrl}/movie-club`
+        : type === Notification.REMOVAL_VOTE
+          ? `${applicationUrl}/votes`
         : payload.issue
           ? `${applicationUrl}/issues/${payload.issue.id}`
           : payload.media
@@ -256,7 +258,8 @@ class DiscordAgent
     try {
       if (settings.options.enableMentions) {
         if (
-          type === Notification.MOVIE_CLUB &&
+          (type === Notification.MOVIE_CLUB ||
+            type === Notification.REMOVAL_VOTE) &&
           !payload.notifyUser &&
           !payload.notifyAdmin
         ) {

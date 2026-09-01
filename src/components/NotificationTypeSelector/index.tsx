@@ -67,6 +67,9 @@ const messages = defineMessages('components.NotificationTypeSelector', {
   movieclub: 'Movie Club',
   movieclubDescription:
     'Get notified when you are assigned to manage a vote, when voting opens, and when Movie Club results are available.',
+  removalvote: 'Removal Votes',
+  removalvoteDescription:
+    'Get notified when a removal vote opens, changes, or needs your decision.',
 });
 
 export const hasNotificationType = (
@@ -110,6 +113,7 @@ export enum Notification {
   ISSUE_REOPENED = 2048,
   MEDIA_AUTO_REQUESTED = 4096,
   MOVIE_CLUB = 8192,
+  REMOVAL_VOTE = 16384,
 }
 
 export const ALL_NOTIFICATIONS = Object.values(Notification)
@@ -287,6 +291,13 @@ const NotificationTypeSelector = ({
         value: Notification.MOVIE_CLUB,
         hasNotifyUser: true,
         hidden: !includeMovieClub,
+      },
+      {
+        id: 'removal-vote',
+        name: intl.formatMessage(messages.removalvote),
+        description: intl.formatMessage(messages.removalvoteDescription),
+        value: Notification.REMOVAL_VOTE,
+        hasNotifyUser: true,
       },
       {
         id: 'media-failed',

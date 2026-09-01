@@ -1,5 +1,160 @@
 # Seerr+ Changelog
 
+## seerr-plus-v1.8.310
+
+- Fix Movie Club scheduled vote saves by inserting candidates with explicit SQL column names.
+- Prevent SQLite from receiving candidate rows without `sessionId` when scheduling or editing Movie Club votes.
+- Treat only draft, scheduled, and voting sessions as the current editable Movie Club session.
+- Keep selected winners in history only, so creating or closing a new vote cannot alter a historical winner.
+- Reload created/updated sessions by their own id instead of looking up any current session.
+- Fix SQLite curator assignment by calling the database type helper correctly.
+
+## seerr-plus-v1.8.305
+
+- Restore Movie Club history visibility by using a simpler SQLite-safe winner ordering query.
+- Keep the Movie Club badge on every film that has won at least once.
+
+## seerr-plus-v1.8.300
+
+- Fix Movie Club winner history ordering by storing when a winner is selected.
+- Sort recent Movie Club winners by winner selection time instead of vote creation time.
+- Backfill existing Movie Club winners with their creation date as a safe fallback.
+- Include the Movie Club winner selection date in the API response.
+
+## seerr-plus-v1.8.295
+
+- Fix Movie Club candidate creation in SQLite by inserting candidates with explicit session/media relation ids.
+- Prevent `SQLITE_CONSTRAINT: NOT NULL constraint failed: movie_club_candidate.sessionId` when creating or editing Movie Club votes.
+
+## seerr-plus-v1.8.290
+
+- Add predefined Movie Club themes so administrators and responsible users can generate four random voting candidates from eligible Plex movies.
+- Add a new Movie Club random candidate endpoint with manager/curator access checks.
+- Prioritize weekly suggestions and interested-user counts while still randomizing themed selections.
+- Add English and Portuguese UI strings for the Movie Club theme picker.
+- Document the new random Movie Club candidate API route.
+
+## seerr-plus-v1.8.285
+
+- Harden Seerr+ routes by validating request, media, session, issue, candidate, and user ids before querying the database.
+- Optimize the Votes endpoint by filtering non-admin removal vote visibility in SQL instead of loading recent sessions and filtering everything in memory.
+- Harden the Tautulli stream image proxy so it only accepts internal Plex metadata image paths and cannot be used with arbitrary external URLs.
+- Add timeout and response-size limits to Tautulli image fetches to avoid slow or oversized proxy responses.
+- Optimize Movie Club manual search by limiting search input/results and checking previous winners in one batch query instead of per result.
+- Limit Movie Club free-text fields and selected user/candidate arrays to safer bounds.
+
+## seerr-plus-v1.8.280
+
+- Hide the Movie Club card from the Votes page when the Movie Club voting period has already ended or the session has already moved to winner/history state.
+
+## seerr-plus-v1.8.275
+
+- Add a dedicated Removal Votes notification type so users can enable or disable removal-vote alerts independently.
+- Route removal-vote notifications through Web Push, Pushbullet, Pushover, Discord, and email using the correct Seerr+ notification type.
+- Add English and Portuguese labels for the new Removal Votes notification setting.
+
+## seerr-plus-v1.8.270
+
+- Remove the extra “You voted keep/remove” text from removal vote cards because the selected vote button already acts as the state indicator.
+
+## seerr-plus-v1.8.265
+
+- Remove the redundant “Removal Votes” helper label from active removal vote cards to keep the mobile layout cleaner.
+
+## seerr-plus-v1.8.260
+
+- Fix the Votes page poster rendering build error by passing the required `CachedImage` image type.
+
+## seerr-plus-v1.8.255
+
+- Further compact the mobile Votes page by turning the Remove/Keep counters into the vote actions.
+- Make the poster and title open the media detail page, removing the separate `Open title` button.
+- Remove the `Open request` action from vote cards to keep the Votes page focused on voting.
+- Add poster artwork to removal vote cards.
+- Add accessible labels for the new counter-based vote buttons in English and Portuguese.
+
+## seerr-plus-v1.8.250
+
+- Redesign the Votes page with a mobile-first layout for daily phone usage.
+- Make removal vote cards more compact with clearer title wrapping, status labels, opened date, and vote summary counters.
+- Turn removal vote actions into full-width touch-friendly buttons on mobile while preserving compact desktop layout.
+- Collapse previous/closed removal votes into a discreet history section so active votes stay prominent.
+- Shorten English and Portuguese copy for better mobile readability.
+
+## seerr-plus-v1.8.245
+
+- Restrict removal request decision controls in the Issue Details UI to administrators only.
+- Keep the backend protection unchanged: approve/reject removal request endpoints continue to require administrator permission.
+- Prevent users with request/issue management permissions from seeing `Approve and Remove`, `Reject Removal`, `Start Voting`, or `Close Voting` controls for Seerr+ removal requests unless they are administrators.
+
+## seerr-plus-v1.8.240
+
+- Improve the Votes page layout by separating active removal votes from previous/closed removal votes.
+- Add a dedicated historical section for closed removal votes so the active voting area stays focused.
+- Resolve fallback `Movie #TMDB_ID` / `Series #TMDB_ID` titles on the Votes page by loading the real media title when needed.
+- Add created/opened date information to removal vote cards.
+- Update English and Portuguese strings for the refined Votes page.
+
+## seerr-plus-v1.8.235
+
+- Fix the `/api/v1/seerrplus/votes` TypeScript build by explicitly narrowing mapped removal vote sessions before returning them.
+
+## seerr-plus-v1.8.230
+
+- Add a new Votes hub where users can follow Movie Club and removal votes in one place.
+- Add Votes to the web and mobile navigation.
+- Show active removal votes directly from the movie/series removal menu for invited users.
+- Store and display friendly media titles for removal votes instead of `Movie #TMDB_ID` fallbacks.
+- Send removal vote notifications to the Votes hub so users land where they can vote.
+- Add a migration for removal vote display titles and update English/PT-PT strings.
+
+## seerr-plus-v1.8.225
+
+- Add audience selection when an administrator starts a removal vote from a removal request.
+- Let the admin choose between all interested users, selected users, or all users before starting the vote.
+- Add a manual user picker to the removal request voting modal.
+- Keep the voting API unchanged by sending `audience` and `userIds` to the existing start-vote endpoint.
+- Add English and Portuguese translations for the new removal vote audience selector.
+
+## seerr-plus-v1.8.220
+
+- Change the removal flow so users/requesters submit a removal request first instead of immediately starting a vote.
+- Keep removal request notifications sent to administrators and interested users through the existing issue notification flow.
+- Add administrator controls on removal request details to start a removal vote or close an active removal vote.
+- Keep administrator actions available at any time: approve/remove, reject, start voting, or close voting.
+- Preserve direct admin-created removal votes from the movie/series page for cases where the admin wants to consult users without waiting for a requester.
+- Add API endpoints for starting a vote from an existing removal request and closing an active removal vote.
+
+## seerr-plus-v1.8.215
+
+- Fix the server build for removal vote notifications.
+- Stop reading title/poster/overview directly from the internal `Media` entity, which only stores media identifiers and status.
+- Keep removal vote notifications linked to the correct movie/series page using the TMDB ID.
+
+## seerr-plus-v1.8.210
+
+- Let administrators choose the audience when opening a removal vote.
+- Support removal votes sent to interested users, selected users, or all users.
+- Add persisted removal vote participants so only the chosen audience can vote.
+- Add admin user selection UI inside the removal modal.
+- Update the removal vote API schema to accept `audience` and `userIds`.
+
+## seerr-plus-v1.8.205
+
+- Add Seerr+ removal voting sessions for available movies/series.
+- Allow a requester/interested user to open a removal vote instead of only creating a direct admin removal issue.
+- Notify interested users when a removal vote starts, linking them back to the title page.
+- Let interested users vote to agree with removal or keep the content.
+- Keep admins in control: removal votes collect opinions, while final removal still goes through admin approval/direct removal.
+- Add SQLite/Postgres migrations for removal vote sessions and votes.
+
+## seerr-plus-v1.8.200
+
+- Redesign the Movie Club page so recent winners are the first highlighted section.
+- Add a large spotlight card for the latest Movie Club winner, including poster, synopsis, and vote count.
+- Add a compact grid for previous Movie Club winners below the main winner highlight.
+- Move the active vote / vote preparation area below the winners section so an ongoing vote appears after the Movie Club history context.
+
 ## seerr-plus-v1.8.195
 
 - Add browser Web Push delivery for Seerr+ Movie Club notifications.

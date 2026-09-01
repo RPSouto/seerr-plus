@@ -28,6 +28,106 @@ const canManageSession = (req: Request, session: MovieClubSession) =>
   canManageMovieClub(req) ||
   (session.curators ?? []).some((curator) => curator.user.id === req.user?.id);
 
+const parsePositiveInteger = (value: unknown): number | null => {
+  const parsed = Number(value);
+
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+};
+
+const parseUniquePositiveIntegers = (
+  values: unknown,
+  limit = 100
+): number[] =>
+  Array.isArray(values)
+    ? [
+        ...new Set(
+          values
+            .map(parsePositiveInteger)
+            .filter((value): value is number => value !== null)
+        ),
+      ].slice(0, limit)
+    : [];
+
+const normalizeText = (value: unknown, maxLength: number) =>
+  (typeof value === 'string' ? value.trim() : '').slice(0, maxLength);
+
+const MOVIE_CLUB_THEMES = [
+  {
+    id: 'community',
+    label: 'Community picks',
+    terms: [],
+  },
+  {
+    id: 'horror',
+    label: 'Horror night',
+    terms: ['horror', 'thriller', 'ghost', 'killer', 'haunted', 'monster'],
+  },
+  {
+    id: 'action',
+    label: 'Action night',
+    terms: ['action', 'adventure', 'fight', 'war', 'crime', 'revenge'],
+  },
+  {
+    id: 'comedy',
+    label: 'Comedy night',
+    terms: ['comedy', 'funny', 'friendship', 'family'],
+  },
+  {
+    id: 'sci-fi',
+    label: 'Sci-fi night',
+    terms: ['science fiction', 'sci-fi', 'space', 'future', 'alien', 'robot'],
+  },
+  {
+    id: 'drama',
+    label: 'Drama night',
+    terms: ['drama', 'romance', 'biography', 'history'],
+  },
+  {
+    id: 'family',
+    label: 'Family night',
+    terms: ['animation', 'family', 'adventure', 'kids'],
+  },
+  {
+    id: 'hidden-gems',
+    label: 'Hidden gems',
+    terms: ['mystery', 'independent', 'festival', 'cult'],
+  },
+] as const;
+
+type MovieClubThemeId = (typeof MOVIE_CLUB_THEMES)[number]['id'];
+
+const getMovieClubTheme = (themeId: unknown) =>
+  MOVIE_CLUB_THEMES.find((theme) => theme.id === themeId) ??
+  MOVIE_CLUB_THEMES[0];
+
+const shuffle = <T>(items: T[]) =>
+  [...items]
+    .map((item) => ({ item, sort: Math.random() }))
+    .sort((a, b) => a.sort - b.sort)
+    .map(({ item }) => item);
+
+const detailMatchesTheme = (
+  details: Awaited<ReturnType<typeof movieDetails>> & {
+    genres?: { name?: string }[];
+  },
+  themeId: MovieClubThemeId
+) => {
+  const theme = getMovieClubTheme(themeId);
+  if (theme.id === 'community' || !theme.terms.length) {
+    return true;
+  }
+
+  const searchable = [
+    details.title,
+    details.overview,
+    ...(details.genres?.map((genre) => genre.name ?? '') ?? []),
+  ]
+    .join(' ')
+    .toLowerCase();
+
+  return theme.terms.some((term) => searchable.includes(term));
+};
+
 const movieDetails = async (media: Media, language?: string) => {
   const movie = await new TheMovieDb().getMovie({
     movieId: media.tmdbId,
@@ -41,6 +141,7 @@ const movieDetails = async (media: Media, language?: string) => {
     releaseDate: movie.release_date,
     posterPath: movie.poster_path,
     overview: movie.overview,
+    genres: movie.genres,
     interestedUsers: interestedUsers.map((user) => ({
       id: user.id,
       displayName: user.displayName,
@@ -86,6 +187,21 @@ const hasWonMovieClub = async (mediaId: number) =>
     .leftJoin('session.selectedMedia', 'selectedMedia')
     .where('selectedMedia.id = :mediaId', { mediaId })
     .getCount()) > 0;
+
+const getWonMovieClubMediaIds = async (mediaIds: number[]) => {
+  if (!mediaIds.length) {
+    return new Set<number>();
+  }
+
+  const rows = await getRepository(MovieClubSession)
+    .createQueryBuilder('session')
+    .leftJoin('session.selectedMedia', 'selectedMedia')
+    .select('selectedMedia.id', 'mediaId')
+    .where('selectedMedia.id IN (:...mediaIds)', { mediaIds })
+    .getRawMany<{ mediaId: number | string }>();
+
+  return new Set(rows.map((row) => Number(row.mediaId)));
+};
 
 const sendVotingOpenEmail = async (
   session: MovieClubSession,
@@ -155,6 +271,24 @@ const getAvailableMovieMediaByIds = async (mediaIds: number[]) => {
     .getMany();
 };
 
+const saveMovieClubCandidates = async (sessionId: number, media: Media[]) => {
+  if (!media.length) {
+    return;
+  }
+
+  const repository = getRepository(MovieClubCandidate);
+  await Promise.all(
+    media.map((item) =>
+      repository.query(
+        isPgsql()
+          ? 'INSERT INTO "movie_club_candidate" ("sessionId", "mediaId") VALUES ($1, $2) ON CONFLICT ("sessionId", "mediaId") DO NOTHING'
+          : 'INSERT OR IGNORE INTO "movie_club_candidate" ("sessionId", "mediaId") VALUES (?, ?)',
+        [sessionId, item.id]
+      )
+    )
+  );
+};
+
 const getSuggestionStats = async (mediaIds: number[], userId?: number) => {
   if (!mediaIds.length) return new Map<number, { count: number; mine: boolean }>();
   const weekKey = getMovieClubWeekKey();
@@ -220,6 +354,7 @@ const serializeSession = async (
     whatsappUrl: session.whatsappUrl,
     title: session.title,
     selectedMediaId: session.selectedMedia?.id ?? null,
+    selectedAt: session.selectedAt ?? null,
     selectedCandidateId: session.selectedMedia
       ? session.candidates?.find((candidate) => candidate.media.id === session.selectedMedia?.id)?.id ?? null
       : null,
@@ -239,12 +374,22 @@ const findCurrentSession = () =>
   getRepository(MovieClubSession).findOne({
     where: [
       { status: MovieClubSessionStatus.VOTING },
-      { status: MovieClubSessionStatus.SELECTED },
       { status: MovieClubSessionStatus.DRAFT },
       { status: MovieClubSessionStatus.SCHEDULED },
     ],
     relations: { candidates: { media: true, votes: true }, votes: { user: true }, selectedMedia: true, curators: { user: true } },
     order: { createdAt: 'DESC' },
+  });
+
+const loadMovieClubSession = (sessionId: number) =>
+  getRepository(MovieClubSession).findOne({
+    where: { id: sessionId },
+    relations: {
+      candidates: { media: true, votes: true },
+      votes: { user: true },
+      selectedMedia: true,
+      curators: { user: true },
+    },
   });
 
 const refreshSessionState = async (
@@ -299,6 +444,7 @@ const refreshSessionState = async (
   if (leaders.length === 1) {
     freshSession.status = MovieClubSessionStatus.SELECTED;
     freshSession.selectedMedia = leaders[0].media;
+    freshSession.selectedAt = new Date();
     await repository.save(freshSession);
     const selectedMovie = await movieDetails(leaders[0].media, language);
     await sendMovieClubEmail(
@@ -395,9 +541,16 @@ movieClubRoutes.get('/', async (req, res, next) => {
 
 movieClubRoutes.get('/eligible', async (req, res, next) => {
   try {
+    const sessionId = req.query.sessionId
+      ? parsePositiveInteger(req.query.sessionId)
+      : null;
+    if (req.query.sessionId && !sessionId) {
+      return next({ status: 400, message: 'Invalid Movie Club session id.' });
+    }
+
     const session = req.query.sessionId
       ? await getRepository(MovieClubSession).findOne({
-          where: { id: Number(req.query.sessionId) },
+          where: { id: sessionId ?? 0 },
           relations: { curators: { user: true }, candidates: { media: true } },
         })
       : null;
@@ -451,11 +604,91 @@ movieClubRoutes.get('/eligible', async (req, res, next) => {
   }
 });
 
+movieClubRoutes.get('/random', async (req, res, next) => {
+  try {
+    const sessionId = req.query.sessionId
+      ? parsePositiveInteger(req.query.sessionId)
+      : null;
+    if (req.query.sessionId && !sessionId) {
+      return next({ status: 400, message: 'Invalid Movie Club session id.' });
+    }
+
+    const session = req.query.sessionId
+      ? await getRepository(MovieClubSession).findOne({
+          where: { id: sessionId ?? 0 },
+          relations: { curators: { user: true } },
+        })
+      : null;
+    if (
+      !canManageMovieClub(req) &&
+      (!session || !canManageSession(req, session))
+    ) {
+      return next({
+        status: 403,
+        message: 'Movie Club manager access required.',
+      });
+    }
+
+    const theme = getMovieClubTheme(req.query.theme);
+    const media = await getEligibleMedia();
+    const suggestionStats = await getSuggestionStats(
+      media.map((item) => item.id),
+      req.user?.id
+    );
+    const details = await Promise.all(
+      media.map(async (item) => {
+        const itemDetails = await movieDetails(item, req.locale);
+        const stats = suggestionStats.get(item.id);
+        return {
+          ...itemDetails,
+          weeklySuggestions: stats?.count ?? 0,
+          suggestedByMe: stats?.mine ?? false,
+          interestedUserCount: itemDetails.interestedUsers.length,
+          interestedUsers: [],
+          randomScore:
+            (stats?.count ?? 0) * 3 + itemDetails.interestedUsers.length,
+        };
+      })
+    );
+
+    const byTheme = details.filter((item) =>
+      detailMatchesTheme(item, theme.id)
+    );
+    const rankedPool = (items: typeof details) =>
+      shuffle(items)
+        .sort((a, b) => b.randomScore - a.randomScore)
+        .slice(0, 12);
+    const selected = shuffle(rankedPool(byTheme)).slice(0, 4);
+    const selectedIds = new Set(selected.map((item) => item.mediaId));
+    const fallback = shuffle(
+      rankedPool(details.filter((item) => !selectedIds.has(item.mediaId)))
+    ).slice(0, Math.max(0, 4 - selected.length));
+    const results = [...selected, ...fallback].slice(0, 4);
+    const winnerMediaIds = await getWonMovieClubMediaIds(
+      results.map((item) => item.mediaId)
+    );
+
+    return res.json({
+      theme,
+      themes: MOVIE_CLUB_THEMES,
+      results: results.map(({ randomScore, ...item }) => ({
+        ...item,
+        hasWonMovieClub: winnerMediaIds.has(item.mediaId),
+      })),
+    });
+  } catch (error) {
+    return next({
+      status: 500,
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
+});
+
 movieClubRoutes.get('/search', async (req, res, next) => {
   try {
     const session = req.query.sessionId
       ? await getRepository(MovieClubSession).findOne({
-          where: { id: Number(req.query.sessionId) },
+          where: { id: parsePositiveInteger(req.query.sessionId) ?? 0 },
           relations: { curators: { user: true } },
         })
       : null;
@@ -465,7 +698,7 @@ movieClubRoutes.get('/search', async (req, res, next) => {
     ) {
       return next({ status: 403, message: 'Movie Club manager access required.' });
     }
-    const query = String(req.query.query ?? '').trim();
+    const query = normalizeText(req.query.query, 100);
     if (query.length < 2) {
       return res.json({ results: [] });
     }
@@ -475,7 +708,9 @@ movieClubRoutes.get('/search', async (req, res, next) => {
       page: 1,
       language: req.locale,
     });
-    const tmdbIds = tmdbResults.results.map((result) => result.id);
+    const tmdbIds = [
+      ...new Set(tmdbResults.results.map((result) => result.id)),
+    ].slice(0, 20);
     if (!tmdbIds.length) {
       return res.json({ results: [] });
     }
@@ -494,22 +729,25 @@ movieClubRoutes.get('/search', async (req, res, next) => {
     const mediaByTmdbId = new Map(
       available.map((item) => [item.tmdbId, item])
     );
+    const resultMedia = tmdbResults.results
+      .map((result) => mediaByTmdbId.get(result.id))
+      .filter((item): item is Media => Boolean(item))
+      .slice(0, 10);
+    const winnerMediaIds = await getWonMovieClubMediaIds(
+      resultMedia.map((item) => item.id)
+    );
     const results = await Promise.all(
-      tmdbResults.results
-        .map((result) => mediaByTmdbId.get(result.id))
-        .filter((item): item is Media => Boolean(item))
-        .slice(0, 10)
-        .map(async (item) => {
-          const details = await movieDetails(item, req.locale);
-          return {
-            ...details,
-            interestedUserCount: details.interestedUsers.length,
-            interestedUsers: [],
-            weeklySuggestions: 0,
-            suggestedByMe: false,
-            hasWonMovieClub: await hasWonMovieClub(item.id),
-          };
-        })
+      resultMedia.map(async (item) => {
+        const details = await movieDetails(item, req.locale);
+        return {
+          ...details,
+          interestedUserCount: details.interestedUsers.length,
+          interestedUsers: [],
+          weeklySuggestions: 0,
+          suggestedByMe: false,
+          hasWonMovieClub: winnerMediaIds.has(item.id),
+        };
+      })
     );
 
     return res.json({ results });
@@ -545,8 +783,9 @@ movieClubRoutes.get('/history', async (req, res, next) => {
       .leftJoinAndSelect('vote.candidate', 'voteCandidate')
       .leftJoinAndSelect('session.curators', 'curator')
       .leftJoinAndSelect('curator.user', 'curatorUser')
-      .where('session.selectedMediaId IS NOT NULL')
-      .orderBy('session.createdAt', 'DESC')
+      .where('selectedMedia.id IS NOT NULL')
+      .orderBy('session.selectedAt', 'DESC')
+      .addOrderBy('session.createdAt', 'DESC')
       .take(12)
       .getMany();
     return res.json({ results: await Promise.all(sessions.map((session) => serializeSession(session, req.user?.id, req.locale))) });
@@ -557,8 +796,8 @@ movieClubRoutes.get('/history', async (req, res, next) => {
 
 movieClubRoutes.get('/winners/:mediaId', async (req, res, next) => {
   try {
-    const mediaId = Number(req.params.mediaId);
-    if (!Number.isInteger(mediaId)) {
+    const mediaId = parsePositiveInteger(req.params.mediaId);
+    if (!mediaId) {
       return next({ status: 400, message: 'Invalid media id.' });
     }
 
@@ -573,14 +812,15 @@ movieClubRoutes.get('/winners/:mediaId', async (req, res, next) => {
           .createQueryBuilder('session')
           .leftJoin('session.selectedMedia', 'selectedMedia')
           .where('selectedMedia.id = :mediaId', { mediaId })
-          .orderBy('session.createdAt', 'DESC')
+          .orderBy('session.selectedAt', 'DESC')
+          .addOrderBy('session.createdAt', 'DESC')
           .getOne()
       : null;
 
     return res.json({
       winner: count > 0,
       count,
-      lastWonAt: latest?.createdAt ?? null,
+      lastWonAt: latest?.selectedAt ?? latest?.createdAt ?? null,
       sessionId: latest?.id ?? null,
     });
   } catch (error) {
@@ -594,7 +834,8 @@ movieClubRoutes.get('/winners/:mediaId', async (req, res, next) => {
 movieClubRoutes.get('/suggestions/:mediaId', async (req, res, next) => {
   try {
     if (!req.user) return next({ status: 401, message: 'Authentication required.' });
-    const mediaId = Number(req.params.mediaId);
+    const mediaId = parsePositiveInteger(req.params.mediaId);
+    if (!mediaId) return next({ status: 400, message: 'Invalid media id.' });
     const weekKey = getMovieClubWeekKey();
     const repository = getRepository(MovieClubSuggestion);
     const [suggestion, count] = await Promise.all([
@@ -616,8 +857,10 @@ movieClubRoutes.get('/suggestions/:mediaId', async (req, res, next) => {
 movieClubRoutes.post('/suggestions/:mediaId', async (req, res, next) => {
   try {
     if (!req.user) return next({ status: 401, message: 'Authentication required.' });
+    const mediaId = parsePositiveInteger(req.params.mediaId);
+    if (!mediaId) return next({ status: 400, message: 'Invalid media id.' });
     const media = await getRepository(Media).findOne({
-      where: { id: Number(req.params.mediaId) },
+      where: { id: mediaId },
     });
     if (!media || media.mediaType !== MediaType.MOVIE) {
       return next({ status: 404, message: 'Movie not found.' });
@@ -654,12 +897,14 @@ movieClubRoutes.post('/suggestions/:mediaId', async (req, res, next) => {
 movieClubRoutes.delete('/suggestions/:mediaId', async (req, res, next) => {
   try {
     if (!req.user) return next({ status: 401, message: 'Authentication required.' });
+    const mediaId = parsePositiveInteger(req.params.mediaId);
+    if (!mediaId) return next({ status: 400, message: 'Invalid media id.' });
     const repository = getRepository(MovieClubSuggestion);
     const weekKey = getMovieClubWeekKey();
     const suggestion = await repository.findOne({
       where: {
         weekKey,
-        media: { id: Number(req.params.mediaId) },
+        media: { id: mediaId },
         user: { id: req.user.id },
       },
     });
@@ -667,7 +912,7 @@ movieClubRoutes.delete('/suggestions/:mediaId', async (req, res, next) => {
     const count = await repository.count({
       where: {
         weekKey,
-        media: { id: Number(req.params.mediaId) },
+        media: { id: mediaId },
       },
     });
     return res.json({ suggested: false, count, weekKey });
@@ -679,12 +924,8 @@ movieClubRoutes.delete('/suggestions/:mediaId', async (req, res, next) => {
 movieClubRoutes.post('/sessions', async (req, res, next) => {
   try {
     if (!req.user || !canManageMovieClub(req)) return next({ status: 403, message: 'Administrator access required.' });
-    const mediaIds: number[] = Array.isArray(req.body?.mediaIds)
-      ? req.body.mediaIds.map(Number)
-      : [];
-    const curatorIds: number[] = Array.isArray(req.body?.curatorUserIds)
-      ? [...new Set<number>(req.body.curatorUserIds.map(Number))]
-      : [];
+    const mediaIds = parseUniquePositiveIntegers(req.body?.mediaIds, 4);
+    const curatorIds = parseUniquePositiveIntegers(req.body?.curatorUserIds, 25);
     const closesAt = new Date(req.body?.closesAt);
     const startsAt = req.body?.startsAt ? new Date(req.body.startsAt) : null;
     const saveDraft = req.body?.draft === true;
@@ -709,9 +950,9 @@ movieClubRoutes.post('/sessions', async (req, res, next) => {
     if (curators.length !== curatorIds.length) {
       return next({ status: 400, message: 'One or more responsible users were not found.' });
     }
-    const session = await getRepository(MovieClubSession).save(new MovieClubSession({ status: saveDraft || !mediaIds.length ? MovieClubSessionStatus.DRAFT : (startsAt ? MovieClubSessionStatus.SCHEDULED : MovieClubSessionStatus.VOTING), startsAt: saveDraft ? null : startsAt, closesAt, whatsappUrl: String(req.body?.whatsappUrl ?? '').trim() || null, title: String(req.body?.title ?? '').trim() || null, createdBy: req.user }));
+    const session = await getRepository(MovieClubSession).save(new MovieClubSession({ status: saveDraft || !mediaIds.length ? MovieClubSessionStatus.DRAFT : (startsAt ? MovieClubSessionStatus.SCHEDULED : MovieClubSessionStatus.VOTING), startsAt: saveDraft ? null : startsAt, closesAt, whatsappUrl: normalizeText(req.body?.whatsappUrl, 500) || null, title: normalizeText(req.body?.title, 120) || null, createdBy: req.user }));
     if (selected.length) {
-      await getRepository(MovieClubCandidate).save(selected.map((media) => new MovieClubCandidate({ session, media })));
+      await saveMovieClubCandidates(session.id, selected);
     }
     if (curatorIds.length) {
       await getRepository(MovieClubCurator).save(curators.map((user) => new MovieClubCurator({ session, user })));
@@ -733,8 +974,11 @@ movieClubRoutes.post('/sessions', async (req, res, next) => {
         }
       );
     }
-    const created = await findCurrentSession();
-    const createdDetails = await serializeSession(created as MovieClubSession, req.user.id, req.locale);
+    const created = await loadMovieClubSession(session.id);
+    if (!created) {
+      return next({ status: 500, message: 'Movie Club session was not created correctly.' });
+    }
+    const createdDetails = await serializeSession(created, req.user.id, req.locale);
     if (session.status === MovieClubSessionStatus.VOTING) {
       await sendMovieClubEmail(
         {
@@ -771,8 +1015,11 @@ movieClubRoutes.post('/sessions', async (req, res, next) => {
 movieClubRoutes.post('/sessions/:sessionId/vote', async (req, res, next) => {
   try {
     if (!req.user) return next({ status: 401, message: 'Authentication required.' });
-    const session = await getRepository(MovieClubSession).findOne({ where: { id: Number(req.params.sessionId) } });
-    const candidate = await getRepository(MovieClubCandidate).findOne({ where: { id: Number(req.body?.candidateId), session: { id: Number(req.params.sessionId) } } });
+    const sessionId = parsePositiveInteger(req.params.sessionId);
+    const candidateId = parsePositiveInteger(req.body?.candidateId);
+    if (!sessionId || !candidateId) return next({ status: 400, message: 'Invalid vote.' });
+    const session = await getRepository(MovieClubSession).findOne({ where: { id: sessionId } });
+    const candidate = await getRepository(MovieClubCandidate).findOne({ where: { id: candidateId, session: { id: sessionId } } });
     if (!session || !candidate) return next({ status: 404, message: 'Movie Club session or candidate not found.' });
     if (session.status !== MovieClubSessionStatus.VOTING || session.closesAt <= new Date()) return next({ status: 409, message: 'Voting is closed.' });
     const votes = getRepository(MovieClubVote);
@@ -787,11 +1034,15 @@ movieClubRoutes.post('/sessions/:sessionId/vote', async (req, res, next) => {
 movieClubRoutes.post('/sessions/:sessionId/select', async (req, res, next) => {
   try {
     if (!canManageMovieClub(req)) return next({ status: 403, message: 'Administrator access required.' });
-    const session = await getRepository(MovieClubSession).findOne({ where: { id: Number(req.params.sessionId) } });
-    const candidate = await getRepository(MovieClubCandidate).findOne({ where: { id: Number(req.body?.candidateId), session: { id: Number(req.params.sessionId) } }, relations: { media: true } });
+    const sessionId = parsePositiveInteger(req.params.sessionId);
+    const candidateId = parsePositiveInteger(req.body?.candidateId);
+    if (!sessionId || !candidateId) return next({ status: 400, message: 'Invalid Movie Club selection.' });
+    const session = await getRepository(MovieClubSession).findOne({ where: { id: sessionId } });
+    const candidate = await getRepository(MovieClubCandidate).findOne({ where: { id: candidateId, session: { id: sessionId } }, relations: { media: true } });
     if (!session || !candidate) return next({ status: 404, message: 'Movie Club session or candidate not found.' });
     session.status = MovieClubSessionStatus.SELECTED;
     session.selectedMedia = candidate.media;
+    session.selectedAt = new Date();
     await getRepository(MovieClubSession).save(session);
     const selectedMovie = await movieDetails(candidate.media, req.locale);
     await sendMovieClubEmail(
@@ -822,8 +1073,13 @@ movieClubRoutes.post('/sessions/:sessionId/select', async (req, res, next) => {
 movieClubRoutes.patch('/sessions/:sessionId', async (req, res, next) => {
   try {
     const repository = getRepository(MovieClubSession);
+    const sessionId = parsePositiveInteger(req.params.sessionId);
+    if (!sessionId) {
+      return next({ status: 400, message: 'Invalid Movie Club session id.' });
+    }
+
     const session = await repository.findOne({
-      where: { id: Number(req.params.sessionId) },
+      where: { id: sessionId },
       relations: { candidates: { media: true }, curators: { user: true } },
     });
     if (!session) return next({ status: 404, message: 'Movie Club session not found.' });
@@ -870,16 +1126,14 @@ movieClubRoutes.patch('/sessions/:sessionId', async (req, res, next) => {
       return next({ status: 400, message: 'The scheduled start must be before the voting deadline.' });
     }
     if (Object.prototype.hasOwnProperty.call(req.body, 'whatsappUrl')) {
-      session.whatsappUrl = String(req.body.whatsappUrl ?? '').trim() || null;
+      session.whatsappUrl = normalizeText(req.body.whatsappUrl, 500) || null;
     }
     if (Object.prototype.hasOwnProperty.call(req.body, 'title')) {
-      session.title = String(req.body.title ?? '').trim() || null;
+      session.title = normalizeText(req.body.title, 120) || null;
     }
 
     if (Array.isArray(req.body?.mediaIds)) {
-      const mediaIds: number[] = [
-        ...new Set<number>(req.body.mediaIds.map(Number)),
-      ];
+      const mediaIds = parseUniquePositiveIntegers(req.body.mediaIds, 4);
       if (
         session.status === MovieClubSessionStatus.DRAFT &&
         session.closesAt <= new Date()
@@ -914,18 +1168,17 @@ movieClubRoutes.patch('/sessions/:sessionId', async (req, res, next) => {
       if (removed.length) await candidateRepository.remove(removed);
       const added = selected.filter((media) => !retainedIds.includes(media.id));
       if (added.length) {
-        await candidateRepository.save(
-          added.map((media) => new MovieClubCandidate({ session, media }))
-        );
+        await saveMovieClubCandidates(session.id, added);
       }
     }
 
     if (canManageMovieClub(req) && Array.isArray(req.body?.curatorUserIds)) {
       const curatorRepository = getRepository(MovieClubCurator);
       const previousCuratorIds = session.curators.map((curator) => curator.user.id);
-      const curatorIds: number[] = [
-        ...new Set<number>(req.body.curatorUserIds.map(Number)),
-      ];
+      const curatorIds = parseUniquePositiveIntegers(
+        req.body.curatorUserIds,
+        25
+      );
       const users = curatorIds.length
         ? await getRepository(User).find({ where: { id: In(curatorIds) } })
         : [];
@@ -944,7 +1197,7 @@ movieClubRoutes.patch('/sessions/:sessionId', async (req, res, next) => {
       if (newlyAssigned.length) {
         for (const user of newlyAssigned) {
           await curatorRepository.query(
-            isPgsql
+            isPgsql()
               ? 'INSERT INTO "movie_club_curator" ("sessionId", "userId") VALUES ($1, $2) ON CONFLICT ("sessionId", "userId") DO NOTHING'
               : 'INSERT OR IGNORE INTO "movie_club_curator" ("sessionId", "userId") VALUES (?, ?)',
             [session.id, user.id]
@@ -987,9 +1240,11 @@ movieClubRoutes.patch('/sessions/:sessionId', async (req, res, next) => {
       session.status = MovieClubSessionStatus.VOTING;
     }
     await repository.save(session);
-    const updated = await findCurrentSession();
+    const updated = await loadMovieClubSession(session.id);
+    if (!updated) {
+      return next({ status: 500, message: 'Movie Club session was not updated correctly.' });
+    }
     if (
-      updated &&
       ((preparedFromDraft && startImmediately) ||
         (wasScheduled && startImmediately))
     ) {
@@ -1024,7 +1279,7 @@ movieClubRoutes.patch('/sessions/:sessionId', async (req, res, next) => {
     }
     return res.json({
       session: await serializeSession(
-        updated as MovieClubSession,
+        updated,
         req.user?.id,
         req.locale
       ),
@@ -1037,8 +1292,13 @@ movieClubRoutes.patch('/sessions/:sessionId', async (req, res, next) => {
 movieClubRoutes.post('/sessions/:sessionId/resolve', async (req, res, next) => {
   try {
     const repository = getRepository(MovieClubSession);
+    const sessionId = parsePositiveInteger(req.params.sessionId);
+    if (!sessionId) {
+      return next({ status: 400, message: 'Invalid Movie Club session id.' });
+    }
+
     const session = await repository.findOne({
-      where: { id: Number(req.params.sessionId) },
+      where: { id: sessionId },
       relations: { candidates: { media: true, votes: true }, votes: true, curators: { user: true } },
     });
     if (!session) return next({ status: 404, message: 'Movie Club session not found.' });
@@ -1051,6 +1311,7 @@ movieClubRoutes.post('/sessions/:sessionId/resolve', async (req, res, next) => {
     if (leaders.length === 1) {
       session.status = MovieClubSessionStatus.SELECTED;
       session.selectedMedia = leaders[0].media;
+      session.selectedAt = new Date();
       await repository.save(session);
       const selectedMovie = await movieDetails(leaders[0].media, req.locale);
       await sendMovieClubEmail(
@@ -1115,7 +1376,11 @@ movieClubRoutes.post('/sessions/:sessionId/close', async (req, res, next) => {
   try {
     if (!canManageMovieClub(req)) return next({ status: 403, message: 'Administrator access required.' });
     const repository = getRepository(MovieClubSession);
-    const session = await repository.findOne({ where: { id: Number(req.params.sessionId) } });
+    const sessionId = parsePositiveInteger(req.params.sessionId);
+    if (!sessionId) {
+      return next({ status: 400, message: 'Invalid Movie Club session id.' });
+    }
+    const session = await repository.findOne({ where: { id: sessionId } });
     if (!session) return next({ status: 404, message: 'Movie Club session not found.' });
     session.status = MovieClubSessionStatus.CLOSED;
     await repository.save(session);
@@ -1128,7 +1393,11 @@ movieClubRoutes.post('/sessions/:sessionId/close', async (req, res, next) => {
 movieClubRoutes.delete('/sessions/:sessionId', async (req, res, next) => {
   try {
     if (!canManageMovieClub(req)) return next({ status: 403, message: 'Administrator access required.' });
-    const result = await getRepository(MovieClubSession).delete(Number(req.params.sessionId));
+    const sessionId = parsePositiveInteger(req.params.sessionId);
+    if (!sessionId) {
+      return next({ status: 400, message: 'Invalid Movie Club session id.' });
+    }
+    const result = await getRepository(MovieClubSession).delete(sessionId);
     if (!result.affected) return next({ status: 404, message: 'Movie Club session not found.' });
     return res.status(204).send();
   } catch (error) {

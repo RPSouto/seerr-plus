@@ -161,6 +161,7 @@ class PushbulletAgent
         ) &&
         payload.notifyUser.settings?.pushbulletAccessToken &&
         (type === Notification.MOVIE_CLUB ||
+          type === Notification.REMOVAL_VOTE ||
           payload.notifyUser.settings.pushbulletAccessToken !==
             settings.options.accessToken)
       ) {
