@@ -189,4 +189,4 @@ Seerr team.
 - License: [MIT](./LICENSE)
 =======
 Current Seerr+ release: `seerr-plus-v1.8.310`.
->>>>>>> bf1c23ee (Stabilize Movie Club voting sessions)
+
