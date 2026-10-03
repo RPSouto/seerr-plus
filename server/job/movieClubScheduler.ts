@@ -3,11 +3,10 @@ import { getRepository } from '@server/datasource';
 import MovieClubSession, {
   MovieClubSessionStatus,
 } from '@server/entity/MovieClubSession';
-import {
-  MovieClubEmailMovie,
-  sendMovieClubEmail,
-} from '@server/lib/seerrplus/movieClubNotifications';
+import type { MovieClubEmailMovie } from '@server/lib/seerrplus/movieClubNotifications';
+import { sendMovieClubEmail } from '@server/lib/seerrplus/movieClubNotifications';
 import logger from '@server/logger';
+import { resolveMovieClubSession } from '@server/routes/movieclub';
 import schedule from 'node-schedule';
 import { IsNull, LessThanOrEqual } from 'typeorm';
 
@@ -93,6 +92,38 @@ export const processScheduledMovieClubSessions = async () => {
         sessionId: session.id,
         startsAt: session.startsAt,
       });
+    }
+
+    const endingSessions = await repository.find({
+      where: {
+        status: MovieClubSessionStatus.VOTING,
+        closesAt: LessThanOrEqual(now),
+      },
+      relations: {
+        candidates: { media: true, votes: true },
+        votes: true,
+        curators: { user: true },
+      },
+    });
+
+    for (const session of endingSessions) {
+      try {
+        const result = await resolveMovieClubSession(session, 'en');
+        logger.info(`Automatically resolved Movie Club vote ${session.id}`, {
+          label: 'Seerr+',
+          sessionId: session.id,
+          result,
+        });
+      } catch (err) {
+        logger.error(
+          `Failed to automatically resolve Movie Club vote ${session.id}`,
+          {
+            label: 'Seerr+',
+            sessionId: session.id,
+            error: err instanceof Error ? err.message : String(err),
+          }
+        );
+      }
     }
   } catch (error) {
     logger.error('Failed to process scheduled Movie Club votes', {

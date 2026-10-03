@@ -4,18 +4,18 @@ import { getRepository, isPgsql } from '@server/datasource';
 import Media from '@server/entity/Media';
 import MovieClubCandidate from '@server/entity/MovieClubCandidate';
 import MovieClubCurator from '@server/entity/MovieClubCurator';
-import MovieClubSession, { MovieClubSessionStatus } from '@server/entity/MovieClubSession';
+import MovieClubSession, {
+  MovieClubSessionStatus,
+} from '@server/entity/MovieClubSession';
 import MovieClubSuggestion from '@server/entity/MovieClubSuggestion';
 import MovieClubVote from '@server/entity/MovieClubVote';
 import { User } from '@server/entity/User';
 import { Permission } from '@server/lib/permissions';
-import {
-  MovieClubEmailMovie,
-  sendMovieClubEmail,
-} from '@server/lib/seerrplus/movieClubNotifications';
+import type { MovieClubEmailMovie } from '@server/lib/seerrplus/movieClubNotifications';
+import { sendMovieClubEmail } from '@server/lib/seerrplus/movieClubNotifications';
 import { getMovieClubWeekKey } from '@server/lib/seerrplus/movieClubSuggestions';
 import { getMediaRequesters } from '@server/lib/seerrplus/requests';
-import type { NextFunction, Request, Response } from 'express';
+import type { Request } from 'express';
 import { Router } from 'express';
 import { In } from 'typeorm';
 
@@ -34,10 +34,7 @@ const parsePositiveInteger = (value: unknown): number | null => {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
 };
 
-const parseUniquePositiveIntegers = (
-  values: unknown,
-  limit = 100
-): number[] =>
+const parseUniquePositiveIntegers = (values: unknown, limit = 100): number[] =>
   Array.isArray(values)
     ? [
         ...new Set(
@@ -165,7 +162,9 @@ const requesterText = (
       : `${names.slice(0, -1).join(', ')} ${
           portuguese ? 'e' : 'and'
         } ${names[names.length - 1]}`;
-  return portuguese ? `Pedido por ${requestedBy}.` : `Requested by ${requestedBy}.`;
+  return portuguese
+    ? `Pedido por ${requestedBy}.`
+    : `Requested by ${requestedBy}.`;
 };
 
 const toEmailMovie = (
@@ -280,7 +279,7 @@ const saveMovieClubCandidates = async (sessionId: number, media: Media[]) => {
   await Promise.all(
     media.map((item) =>
       repository.query(
-        isPgsql()
+        isPgsql
           ? 'INSERT INTO "movie_club_candidate" ("sessionId", "mediaId") VALUES ($1, $2) ON CONFLICT ("sessionId", "mediaId") DO NOTHING'
           : 'INSERT OR IGNORE INTO "movie_club_candidate" ("sessionId", "mediaId") VALUES (?, ?)',
         [sessionId, item.id]
@@ -290,7 +289,8 @@ const saveMovieClubCandidates = async (sessionId: number, media: Media[]) => {
 };
 
 const getSuggestionStats = async (mediaIds: number[], userId?: number) => {
-  if (!mediaIds.length) return new Map<number, { count: number; mine: boolean }>();
+  if (!mediaIds.length)
+    return new Map<number, { count: number; mine: boolean }>();
   const weekKey = getMovieClubWeekKey();
   const repository = getRepository(MovieClubSuggestion);
   const counts = await repository
@@ -356,11 +356,15 @@ const serializeSession = async (
     selectedMediaId: session.selectedMedia?.id ?? null,
     selectedAt: session.selectedAt ?? null,
     selectedCandidateId: session.selectedMedia
-      ? session.candidates?.find((candidate) => candidate.media.id === session.selectedMedia?.id)?.id ?? null
+      ? (session.candidates?.find(
+          (candidate) => candidate.media.id === session.selectedMedia?.id
+        )?.id ?? null)
       : null,
     candidates,
     totalVotes: (session.votes ?? []).length,
-    myVoteCandidateId:session.votes?.find((vote) => vote.user?.id === userId)?.candidate?.id ?? null,
+    myVoteCandidateId:
+      session.votes?.find((vote) => vote.user?.id === userId)?.candidate?.id ??
+      null,
     curators: (session.curators ?? []).map((curator) => ({
       id: curator.user.id,
       displayName: curator.user.displayName,
@@ -377,7 +381,12 @@ const findCurrentSession = () =>
       { status: MovieClubSessionStatus.DRAFT },
       { status: MovieClubSessionStatus.SCHEDULED },
     ],
-    relations: { candidates: { media: true, votes: true }, votes: { user: true }, selectedMedia: true, curators: { user: true } },
+    relations: {
+      candidates: { media: true, votes: true },
+      votes: { user: true },
+      selectedMedia: true,
+      curators: { user: true },
+    },
     order: { createdAt: 'DESC' },
   });
 
@@ -485,7 +494,9 @@ const refreshSessionState = async (
     (a, b) => a.count - b.count || b.candidate.id - a.candidate.id
   );
   await getRepository(MovieClubCandidate).remove(interestCounts[0].candidate);
-  await getRepository(MovieClubVote).delete({ session: { id: freshSession.id } });
+  await getRepository(MovieClubVote).delete({
+    session: { id: freshSession.id },
+  });
   freshSession.closesAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
   await repository.save(freshSession);
   const remainingMovies = await Promise.all(
@@ -535,7 +546,10 @@ movieClubRoutes.get('/', async (req, res, next) => {
     response.canManage = canManageSession(req, refreshedSession);
     return res.json({ session: response });
   } catch (error) {
-    return next({ status: 500, message: error instanceof Error ? error.message : String(error) });
+    return next({
+      status: 500,
+      message: error instanceof Error ? error.message : String(error),
+    });
   }
 });
 
@@ -558,7 +572,10 @@ movieClubRoutes.get('/eligible', async (req, res, next) => {
       !canManageMovieClub(req) &&
       (!session || !canManageSession(req, session))
     ) {
-      return next({ status: 403, message: 'Movie Club manager access required.' });
+      return next({
+        status: 403,
+        message: 'Movie Club manager access required.',
+      });
     }
     const media = await getEligibleMedia();
     const results = await Promise.all(
@@ -583,7 +600,9 @@ movieClubRoutes.get('/eligible', async (req, res, next) => {
     const selectedMediaIds = new Set(
       session?.candidates.map((candidate) => candidate.media.id) ?? []
     );
-    const selected = ranked.filter((item) => selectedMediaIds.has(item.mediaId));
+    const selected = ranked.filter((item) =>
+      selectedMediaIds.has(item.mediaId)
+    );
     const top = [
       ...selected,
       ...ranked.filter((item) => !selectedMediaIds.has(item.mediaId)),
@@ -600,7 +619,10 @@ movieClubRoutes.get('/eligible', async (req, res, next) => {
       weekKey: getMovieClubWeekKey(),
     });
   } catch (error) {
-    return next({ status: 500, message: error instanceof Error ? error.message : String(error) });
+    return next({
+      status: 500,
+      message: error instanceof Error ? error.message : String(error),
+    });
   }
 });
 
@@ -671,7 +693,8 @@ movieClubRoutes.get('/random', async (req, res, next) => {
     return res.json({
       theme,
       themes: MOVIE_CLUB_THEMES,
-      results: results.map(({ randomScore, ...item }) => ({
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      results: results.map(({ randomScore: _randomScore, ...item }) => ({
         ...item,
         hasWonMovieClub: winnerMediaIds.has(item.mediaId),
       })),
@@ -696,7 +719,10 @@ movieClubRoutes.get('/search', async (req, res, next) => {
       !canManageMovieClub(req) &&
       (!session || !canManageSession(req, session))
     ) {
-      return next({ status: 403, message: 'Movie Club manager access required.' });
+      return next({
+        status: 403,
+        message: 'Movie Club manager access required.',
+      });
     }
     const query = normalizeText(req.query.query, 100);
     if (query.length < 2) {
@@ -726,9 +752,7 @@ movieClubRoutes.get('/search', async (req, res, next) => {
         item.status === MediaStatus.AVAILABLE ||
         item.status4k === MediaStatus.AVAILABLE
     );
-    const mediaByTmdbId = new Map(
-      available.map((item) => [item.tmdbId, item])
-    );
+    const mediaByTmdbId = new Map(available.map((item) => [item.tmdbId, item]));
     const resultMedia = tmdbResults.results
       .map((result) => mediaByTmdbId.get(result.id))
       .filter((item): item is Media => Boolean(item))
@@ -761,12 +785,22 @@ movieClubRoutes.get('/search', async (req, res, next) => {
 
 movieClubRoutes.get('/users', async (req, res, next) => {
   try {
-    if (!canManageMovieClub(req)) return next({ status: 403, message: 'Administrator access required.' });
+    if (!canManageMovieClub(req))
+      return next({ status: 403, message: 'Administrator access required.' });
     const users = await getRepository(User).find();
     users.sort((a, b) => a.displayName.localeCompare(b.displayName));
-    return res.json({ results: users.map((user) => ({ id: user.id, displayName: user.displayName, avatar: user.avatar })) });
+    return res.json({
+      results: users.map((user) => ({
+        id: user.id,
+        displayName: user.displayName,
+        avatar: user.avatar,
+      })),
+    });
   } catch (error) {
-    return next({ status: 500, message: error instanceof Error ? error.message : String(error) });
+    return next({
+      status: 500,
+      message: error instanceof Error ? error.message : String(error),
+    });
   }
 });
 
@@ -788,9 +822,18 @@ movieClubRoutes.get('/history', async (req, res, next) => {
       .addOrderBy('session.createdAt', 'DESC')
       .take(12)
       .getMany();
-    return res.json({ results: await Promise.all(sessions.map((session) => serializeSession(session, req.user?.id, req.locale))) });
+    return res.json({
+      results: await Promise.all(
+        sessions.map((session) =>
+          serializeSession(session, req.user?.id, req.locale)
+        )
+      ),
+    });
   } catch (error) {
-    return next({ status: 500, message: error instanceof Error ? error.message : String(error) });
+    return next({
+      status: 500,
+      message: error instanceof Error ? error.message : String(error),
+    });
   }
 });
 
@@ -833,7 +876,8 @@ movieClubRoutes.get('/winners/:mediaId', async (req, res, next) => {
 
 movieClubRoutes.get('/suggestions/:mediaId', async (req, res, next) => {
   try {
-    if (!req.user) return next({ status: 401, message: 'Authentication required.' });
+    if (!req.user)
+      return next({ status: 401, message: 'Authentication required.' });
     const mediaId = parsePositiveInteger(req.params.mediaId);
     if (!mediaId) return next({ status: 400, message: 'Invalid media id.' });
     const weekKey = getMovieClubWeekKey();
@@ -850,13 +894,17 @@ movieClubRoutes.get('/suggestions/:mediaId', async (req, res, next) => {
     ]);
     return res.json({ suggested: Boolean(suggestion), count, weekKey });
   } catch (error) {
-    return next({ status: 500, message: error instanceof Error ? error.message : String(error) });
+    return next({
+      status: 500,
+      message: error instanceof Error ? error.message : String(error),
+    });
   }
 });
 
 movieClubRoutes.post('/suggestions/:mediaId', async (req, res, next) => {
   try {
-    if (!req.user) return next({ status: 401, message: 'Authentication required.' });
+    if (!req.user)
+      return next({ status: 401, message: 'Authentication required.' });
     const mediaId = parsePositiveInteger(req.params.mediaId);
     if (!mediaId) return next({ status: 400, message: 'Invalid media id.' });
     const media = await getRepository(Media).findOne({
@@ -869,7 +917,10 @@ movieClubRoutes.post('/suggestions/:mediaId', async (req, res, next) => {
       media.status !== MediaStatus.AVAILABLE &&
       media.status4k !== MediaStatus.AVAILABLE
     ) {
-      return next({ status: 409, message: 'Only movies available in Plex can be suggested.' });
+      return next({
+        status: 409,
+        message: 'Only movies available in Plex can be suggested.',
+      });
     }
     const repository = getRepository(MovieClubSuggestion);
     const weekKey = getMovieClubWeekKey();
@@ -890,13 +941,17 @@ movieClubRoutes.post('/suggestions/:mediaId', async (req, res, next) => {
     });
     return res.json({ suggested: true, count, weekKey });
   } catch (error) {
-    return next({ status: 500, message: error instanceof Error ? error.message : String(error) });
+    return next({
+      status: 500,
+      message: error instanceof Error ? error.message : String(error),
+    });
   }
 });
 
 movieClubRoutes.delete('/suggestions/:mediaId', async (req, res, next) => {
   try {
-    if (!req.user) return next({ status: 401, message: 'Authentication required.' });
+    if (!req.user)
+      return next({ status: 401, message: 'Authentication required.' });
     const mediaId = parsePositiveInteger(req.params.mediaId);
     if (!mediaId) return next({ status: 400, message: 'Invalid media id.' });
     const repository = getRepository(MovieClubSuggestion);
@@ -917,48 +972,95 @@ movieClubRoutes.delete('/suggestions/:mediaId', async (req, res, next) => {
     });
     return res.json({ suggested: false, count, weekKey });
   } catch (error) {
-    return next({ status: 500, message: error instanceof Error ? error.message : String(error) });
+    return next({
+      status: 500,
+      message: error instanceof Error ? error.message : String(error),
+    });
   }
 });
 
 movieClubRoutes.post('/sessions', async (req, res, next) => {
   try {
-    if (!req.user || !canManageMovieClub(req)) return next({ status: 403, message: 'Administrator access required.' });
+    if (!req.user || !canManageMovieClub(req))
+      return next({ status: 403, message: 'Administrator access required.' });
     const mediaIds = parseUniquePositiveIntegers(req.body?.mediaIds, 4);
-    const curatorIds = parseUniquePositiveIntegers(req.body?.curatorUserIds, 25);
+    const curatorIds = parseUniquePositiveIntegers(
+      req.body?.curatorUserIds,
+      25
+    );
     const closesAt = new Date(req.body?.closesAt);
     const startsAt = req.body?.startsAt ? new Date(req.body.startsAt) : null;
     const saveDraft = req.body?.draft === true;
     const validCandidateCount = mediaIds.length >= 2 && mediaIds.length <= 4;
     const validDelegatedDraft = mediaIds.length === 0 && curatorIds.length > 0;
     const validDraft = saveDraft && mediaIds.length <= 4;
-    if ((!validCandidateCount && !validDelegatedDraft && !validDraft) || Number.isNaN(closesAt.getTime()) || closesAt <= new Date()) return next({ status: 400, message: 'Select between two and four candidates, save a draft, or assign a responsible user, and choose a future closing date.' });
+    if (
+      (!validCandidateCount && !validDelegatedDraft && !validDraft) ||
+      Number.isNaN(closesAt.getTime()) ||
+      closesAt <= new Date()
+    )
+      return next({
+        status: 400,
+        message:
+          'Select between two and four candidates, save a draft, or assign a responsible user, and choose a future closing date.',
+      });
     if (
       startsAt &&
       (Number.isNaN(startsAt.getTime()) ||
         startsAt <= new Date() ||
         startsAt >= closesAt)
     ) {
-      return next({ status: 400, message: 'The scheduled start must be in the future and before the voting deadline.' });
+      return next({
+        status: 400,
+        message:
+          'The scheduled start must be in the future and before the voting deadline.',
+      });
     }
-    if (await findCurrentSession()) return next({ status: 409, message: 'A Movie Club session is already active.' });
+    if (await findCurrentSession())
+      return next({
+        status: 409,
+        message: 'A Movie Club session is already active.',
+      });
     const selected = await getAvailableMovieMediaByIds(mediaIds);
-    if (selected.length !== new Set(mediaIds).size) return next({ status: 400, message: 'Candidates must be movies available in Plex.' });
+    if (selected.length !== new Set(mediaIds).size)
+      return next({
+        status: 400,
+        message: 'Candidates must be movies available in Plex.',
+      });
     const curators = curatorIds.length
       ? await getRepository(User).find({ where: { id: In(curatorIds) } })
       : [];
     if (curators.length !== curatorIds.length) {
-      return next({ status: 400, message: 'One or more responsible users were not found.' });
+      return next({
+        status: 400,
+        message: 'One or more responsible users were not found.',
+      });
     }
-    const session = await getRepository(MovieClubSession).save(new MovieClubSession({ status: saveDraft || !mediaIds.length ? MovieClubSessionStatus.DRAFT : (startsAt ? MovieClubSessionStatus.SCHEDULED : MovieClubSessionStatus.VOTING), startsAt: saveDraft ? null : startsAt, closesAt, whatsappUrl: normalizeText(req.body?.whatsappUrl, 500) || null, title: normalizeText(req.body?.title, 120) || null, createdBy: req.user }));
+    const session = await getRepository(MovieClubSession).save(
+      new MovieClubSession({
+        status:
+          saveDraft || !mediaIds.length
+            ? MovieClubSessionStatus.DRAFT
+            : startsAt
+              ? MovieClubSessionStatus.SCHEDULED
+              : MovieClubSessionStatus.VOTING,
+        startsAt: saveDraft ? null : startsAt,
+        closesAt,
+        whatsappUrl: normalizeText(req.body?.whatsappUrl, 500) || null,
+        title: normalizeText(req.body?.title, 120) || null,
+        createdBy: req.user,
+      })
+    );
     if (selected.length) {
       await saveMovieClubCandidates(session.id, selected);
     }
     if (curatorIds.length) {
-      await getRepository(MovieClubCurator).save(curators.map((user) => new MovieClubCurator({ session, user })));
+      await getRepository(MovieClubCurator).save(
+        curators.map((user) => new MovieClubCurator({ session, user }))
+      );
       await sendMovieClubEmail(
         {
-          en: 'Movie Club: you are choosing this week\'s films',
+          en: "Movie Club: you are choosing this week's films",
           pt: 'Movie Club: vais escolher os filmes desta semana',
         },
         {
@@ -976,9 +1078,16 @@ movieClubRoutes.post('/sessions', async (req, res, next) => {
     }
     const created = await loadMovieClubSession(session.id);
     if (!created) {
-      return next({ status: 500, message: 'Movie Club session was not created correctly.' });
+      return next({
+        status: 500,
+        message: 'Movie Club session was not created correctly.',
+      });
     }
-    const createdDetails = await serializeSession(created, req.user.id, req.locale);
+    const createdDetails = await serializeSession(
+      created,
+      req.user.id,
+      req.locale
+    );
     if (session.status === MovieClubSessionStatus.VOTING) {
       await sendMovieClubEmail(
         {
@@ -1008,38 +1117,75 @@ movieClubRoutes.post('/sessions', async (req, res, next) => {
     }
     return res.status(201).json({ session: createdDetails });
   } catch (error) {
-    return next({ status: 500, message: error instanceof Error ? error.message : String(error) });
+    return next({
+      status: 500,
+      message: error instanceof Error ? error.message : String(error),
+    });
   }
 });
 
 movieClubRoutes.post('/sessions/:sessionId/vote', async (req, res, next) => {
   try {
-    if (!req.user) return next({ status: 401, message: 'Authentication required.' });
+    if (!req.user)
+      return next({ status: 401, message: 'Authentication required.' });
     const sessionId = parsePositiveInteger(req.params.sessionId);
     const candidateId = parsePositiveInteger(req.body?.candidateId);
-    if (!sessionId || !candidateId) return next({ status: 400, message: 'Invalid vote.' });
-    const session = await getRepository(MovieClubSession).findOne({ where: { id: sessionId } });
-    const candidate = await getRepository(MovieClubCandidate).findOne({ where: { id: candidateId, session: { id: sessionId } } });
-    if (!session || !candidate) return next({ status: 404, message: 'Movie Club session or candidate not found.' });
-    if (session.status !== MovieClubSessionStatus.VOTING || session.closesAt <= new Date()) return next({ status: 409, message: 'Voting is closed.' });
+    if (!sessionId || !candidateId)
+      return next({ status: 400, message: 'Invalid vote.' });
+    const session = await getRepository(MovieClubSession).findOne({
+      where: { id: sessionId },
+    });
+    const candidate = await getRepository(MovieClubCandidate).findOne({
+      where: { id: candidateId, session: { id: sessionId } },
+    });
+    if (!session || !candidate)
+      return next({
+        status: 404,
+        message: 'Movie Club session or candidate not found.',
+      });
+    if (
+      session.status !== MovieClubSessionStatus.VOTING ||
+      session.closesAt <= new Date()
+    )
+      return next({ status: 409, message: 'Voting is closed.' });
     const votes = getRepository(MovieClubVote);
-    const vote = await votes.findOne({ where: { session: { id: session.id }, user: { id: req.user.id } } });
-    await votes.save(vote ? Object.assign(vote, { candidate }) : new MovieClubVote({ session, candidate, user: req.user }));
+    const vote = await votes.findOne({
+      where: { session: { id: session.id }, user: { id: req.user.id } },
+    });
+    await votes.save(
+      vote
+        ? Object.assign(vote, { candidate })
+        : new MovieClubVote({ session, candidate, user: req.user })
+    );
     return res.status(204).send();
   } catch (error) {
-    return next({ status: 500, message: error instanceof Error ? error.message : String(error) });
+    return next({
+      status: 500,
+      message: error instanceof Error ? error.message : String(error),
+    });
   }
 });
 
 movieClubRoutes.post('/sessions/:sessionId/select', async (req, res, next) => {
   try {
-    if (!canManageMovieClub(req)) return next({ status: 403, message: 'Administrator access required.' });
+    if (!canManageMovieClub(req))
+      return next({ status: 403, message: 'Administrator access required.' });
     const sessionId = parsePositiveInteger(req.params.sessionId);
     const candidateId = parsePositiveInteger(req.body?.candidateId);
-    if (!sessionId || !candidateId) return next({ status: 400, message: 'Invalid Movie Club selection.' });
-    const session = await getRepository(MovieClubSession).findOne({ where: { id: sessionId } });
-    const candidate = await getRepository(MovieClubCandidate).findOne({ where: { id: candidateId, session: { id: sessionId } }, relations: { media: true } });
-    if (!session || !candidate) return next({ status: 404, message: 'Movie Club session or candidate not found.' });
+    if (!sessionId || !candidateId)
+      return next({ status: 400, message: 'Invalid Movie Club selection.' });
+    const session = await getRepository(MovieClubSession).findOne({
+      where: { id: sessionId },
+    });
+    const candidate = await getRepository(MovieClubCandidate).findOne({
+      where: { id: candidateId, session: { id: sessionId } },
+      relations: { media: true },
+    });
+    if (!session || !candidate)
+      return next({
+        status: 404,
+        message: 'Movie Club session or candidate not found.',
+      });
     session.status = MovieClubSessionStatus.SELECTED;
     session.selectedMedia = candidate.media;
     session.selectedAt = new Date();
@@ -1066,7 +1212,10 @@ movieClubRoutes.post('/sessions/:sessionId/select', async (req, res, next) => {
     );
     return res.status(204).send();
   } catch (error) {
-    return next({ status: 500, message: error instanceof Error ? error.message : String(error) });
+    return next({
+      status: 500,
+      message: error instanceof Error ? error.message : String(error),
+    });
   }
 });
 
@@ -1082,19 +1231,26 @@ movieClubRoutes.patch('/sessions/:sessionId', async (req, res, next) => {
       where: { id: sessionId },
       relations: { candidates: { media: true }, curators: { user: true } },
     });
-    if (!session) return next({ status: 404, message: 'Movie Club session not found.' });
+    if (!session)
+      return next({ status: 404, message: 'Movie Club session not found.' });
     if (!canManageSession(req, session)) {
       return next({ status: 403, message: 'Administrator access required.' });
     }
 
     if (req.body?.closesAt && !canManageMovieClub(req)) {
-      return next({ status: 403, message: 'Only an administrator can change the voting deadline.' });
+      return next({
+        status: 403,
+        message: 'Only an administrator can change the voting deadline.',
+      });
     }
     if (
       Object.prototype.hasOwnProperty.call(req.body, 'startsAt') &&
       !canManageMovieClub(req)
     ) {
-      return next({ status: 403, message: 'Only an administrator can change the scheduled start.' });
+      return next({
+        status: 403,
+        message: 'Only an administrator can change the scheduled start.',
+      });
     }
     const wasScheduled = session.status === MovieClubSessionStatus.SCHEDULED;
     const saveDraft = req.body?.draft === true;
@@ -1103,14 +1259,20 @@ movieClubRoutes.patch('/sessions/:sessionId', async (req, res, next) => {
         session.status !== MovieClubSessionStatus.DRAFT &&
         session.status !== MovieClubSessionStatus.SCHEDULED
       ) {
-        return next({ status: 409, message: 'Only a draft or scheduled vote can change its start time.' });
+        return next({
+          status: 409,
+          message: 'Only a draft or scheduled vote can change its start time.',
+        });
       }
       const startsAt = req.body.startsAt ? new Date(req.body.startsAt) : null;
       if (
         startsAt &&
         (Number.isNaN(startsAt.getTime()) || startsAt <= new Date())
       ) {
-        return next({ status: 400, message: 'The scheduled start must be in the future.' });
+        return next({
+          status: 400,
+          message: 'The scheduled start must be in the future.',
+        });
       }
       session.startsAt = startsAt;
       session.startNotificationSentAt = null;
@@ -1123,7 +1285,10 @@ movieClubRoutes.patch('/sessions/:sessionId', async (req, res, next) => {
       session.closesAt = closesAt;
     }
     if (session.startsAt && session.startsAt >= session.closesAt) {
-      return next({ status: 400, message: 'The scheduled start must be before the voting deadline.' });
+      return next({
+        status: 400,
+        message: 'The scheduled start must be before the voting deadline.',
+      });
     }
     if (Object.prototype.hasOwnProperty.call(req.body, 'whatsappUrl')) {
       session.whatsappUrl = normalizeText(req.body.whatsappUrl, 500) || null;
@@ -1138,7 +1303,11 @@ movieClubRoutes.patch('/sessions/:sessionId', async (req, res, next) => {
         session.status === MovieClubSessionStatus.DRAFT &&
         session.closesAt <= new Date()
       ) {
-        return next({ status: 409, message: 'The administrator must choose a new voting deadline before the vote can open.' });
+        return next({
+          status: 409,
+          message:
+            'The administrator must choose a new voting deadline before the vote can open.',
+        });
       }
       if (
         !saveDraft &&
@@ -1149,14 +1318,27 @@ movieClubRoutes.patch('/sessions/:sessionId', async (req, res, next) => {
             session.status !== MovieClubSessionStatus.SCHEDULED &&
             (mediaIds.length < 2 || mediaIds.length > 4)))
       ) {
-        return next({ status: 400, message: session.status === MovieClubSessionStatus.DRAFT || session.status === MovieClubSessionStatus.SCHEDULED ? 'Select exactly four candidates to prepare the vote.' : 'Select between two and four candidates.' });
+        return next({
+          status: 400,
+          message:
+            session.status === MovieClubSessionStatus.DRAFT ||
+            session.status === MovieClubSessionStatus.SCHEDULED
+              ? 'Select exactly four candidates to prepare the vote.'
+              : 'Select between two and four candidates.',
+        });
       }
       if (saveDraft && mediaIds.length > 4) {
-        return next({ status: 400, message: 'A draft can include up to four candidates.' });
+        return next({
+          status: 400,
+          message: 'A draft can include up to four candidates.',
+        });
       }
       const selected = await getAvailableMovieMediaByIds(mediaIds);
       if (selected.length !== mediaIds.length) {
-        return next({ status: 400, message: 'Candidates must be movies available in Plex.' });
+        return next({
+          status: 400,
+          message: 'Candidates must be movies available in Plex.',
+        });
       }
       const candidateRepository = getRepository(MovieClubCandidate);
       const retainedIds = session.candidates
@@ -1174,7 +1356,9 @@ movieClubRoutes.patch('/sessions/:sessionId', async (req, res, next) => {
 
     if (canManageMovieClub(req) && Array.isArray(req.body?.curatorUserIds)) {
       const curatorRepository = getRepository(MovieClubCurator);
-      const previousCuratorIds = session.curators.map((curator) => curator.user.id);
+      const previousCuratorIds = session.curators.map(
+        (curator) => curator.user.id
+      );
       const curatorIds = parseUniquePositiveIntegers(
         req.body.curatorUserIds,
         25
@@ -1183,7 +1367,10 @@ movieClubRoutes.patch('/sessions/:sessionId', async (req, res, next) => {
         ? await getRepository(User).find({ where: { id: In(curatorIds) } })
         : [];
       if (users.length !== curatorIds.length) {
-        return next({ status: 400, message: 'One or more responsible users were not found.' });
+        return next({
+          status: 400,
+          message: 'One or more responsible users were not found.',
+        });
       }
       const removedCurators = session.curators.filter(
         (curator) => !curatorIds.includes(curator.user.id)
@@ -1197,7 +1384,7 @@ movieClubRoutes.patch('/sessions/:sessionId', async (req, res, next) => {
       if (newlyAssigned.length) {
         for (const user of newlyAssigned) {
           await curatorRepository.query(
-            isPgsql()
+            isPgsql
               ? 'INSERT INTO "movie_club_curator" ("sessionId", "userId") VALUES ($1, $2) ON CONFLICT ("sessionId", "userId") DO NOTHING'
               : 'INSERT OR IGNORE INTO "movie_club_curator" ("sessionId", "userId") VALUES (?, ?)',
             [session.id, user.id]
@@ -1205,7 +1392,7 @@ movieClubRoutes.patch('/sessions/:sessionId', async (req, res, next) => {
         }
         await sendMovieClubEmail(
           {
-            en: 'Movie Club: you are choosing this week\'s films',
+            en: "Movie Club: you are choosing this week's films",
             pt: 'Movie Club: vais escolher os filmes desta semana',
           },
           {
@@ -1227,7 +1414,8 @@ movieClubRoutes.patch('/sessions/:sessionId', async (req, res, next) => {
       session.status === MovieClubSessionStatus.DRAFT &&
       Array.isArray(req.body?.mediaIds) &&
       !saveDraft;
-    const startImmediately = !session.startsAt || session.startsAt <= new Date();
+    const startImmediately =
+      !session.startsAt || session.startsAt <= new Date();
     if (saveDraft) {
       session.status = MovieClubSessionStatus.DRAFT;
       session.startsAt = null;
@@ -1242,13 +1430,20 @@ movieClubRoutes.patch('/sessions/:sessionId', async (req, res, next) => {
     await repository.save(session);
     const updated = await loadMovieClubSession(session.id);
     if (!updated) {
-      return next({ status: 500, message: 'Movie Club session was not updated correctly.' });
+      return next({
+        status: 500,
+        message: 'Movie Club session was not updated correctly.',
+      });
     }
     if (
-      ((preparedFromDraft && startImmediately) ||
-        (wasScheduled && startImmediately))
+      (preparedFromDraft && startImmediately) ||
+      (wasScheduled && startImmediately)
     ) {
-      const openedDetails = await serializeSession(updated, req.user?.id, req.locale);
+      const openedDetails = await serializeSession(
+        updated,
+        req.user?.id,
+        req.locale
+      );
       await sendMovieClubEmail(
         {
           en: 'Movie Club voting is now open',
@@ -1278,16 +1473,99 @@ movieClubRoutes.patch('/sessions/:sessionId', async (req, res, next) => {
       await repository.save(session);
     }
     return res.json({
-      session: await serializeSession(
-        updated,
-        req.user?.id,
-        req.locale
-      ),
+      session: await serializeSession(updated, req.user?.id, req.locale),
     });
   } catch (error) {
-    return next({ status: 500, message: error instanceof Error ? error.message : String(error) });
+    return next({
+      status: 500,
+      message: error instanceof Error ? error.message : String(error),
+    });
   }
 });
+
+export const resolveMovieClubSession = async (
+  session: MovieClubSession,
+  locale = 'en'
+) => {
+  const repository = getRepository(MovieClubSession);
+  const ranked = [...session.candidates].sort(
+    (a, b) => b.votes.length - a.votes.length
+  );
+  const topVotes = ranked[0]?.votes.length ?? 0;
+  const leaders = ranked.filter(
+    (candidate) => candidate.votes.length === topVotes
+  );
+  if (leaders.length === 1) {
+    session.status = MovieClubSessionStatus.SELECTED;
+    session.selectedMedia = leaders[0].media;
+    session.selectedAt = new Date();
+    await repository.save(session);
+    const selectedMovie = await movieDetails(leaders[0].media, locale);
+    await sendMovieClubEmail(
+      {
+        en: `Movie Club winner: ${selectedMovie.title}`,
+        pt: `Vencedor do Movie Club: ${selectedMovie.title}`,
+      },
+      {
+        en: `The votes are in. ${selectedMovie.title} is the Film of the Week with ${topVotes} votes. ${requesterText(selectedMovie)} Watch it on Plex, read the synopsis in Seerr+, and join the Movie Club discussion.`,
+        pt: `Os votos estão fechados. ${selectedMovie.title} é o Filme da Semana com ${topVotes} votos. ${requesterText(selectedMovie, true)} Vê no Plex, lê a sinopse no Seerr+ e junta-te à conversa do Movie Club.`,
+      },
+      undefined,
+      {
+        actionLabel: {
+          en: 'Open Film of the Week',
+          pt: 'Abrir Filme da Semana',
+        },
+        highlightMovie: toEmailMovie(selectedMovie, topVotes),
+        movies: [toEmailMovie(selectedMovie, topVotes)],
+      }
+    );
+    return { tie: false, winner: selectedMovie };
+  }
+  const lowestVotes = Math.min(
+    ...ranked.map((candidate) => candidate.votes.length)
+  );
+  const lowest = ranked.filter(
+    (candidate) => candidate.votes.length === lowestVotes
+  );
+  const interestCounts = await Promise.all(
+    lowest.map(async (candidate) => ({
+      candidate,
+      count: (await getMediaRequesters(candidate.media.id, false)).length,
+    }))
+  );
+  interestCounts.sort(
+    (a, b) => a.count - b.count || b.candidate.id - a.candidate.id
+  );
+  await getRepository(MovieClubCandidate).remove(interestCounts[0].candidate);
+  await getRepository(MovieClubVote).delete({ session: { id: session.id } });
+  session.closesAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  await repository.save(session);
+  const remainingMovies = await Promise.all(
+    ranked
+      .filter((candidate) => candidate.id !== interestCounts[0].candidate.id)
+      .map((candidate) => movieDetails(candidate.media, locale))
+  );
+  await sendMovieClubEmail(
+    {
+      en: 'Movie Club tie-break: voting extended',
+      pt: 'Desempate do Movie Club: votação prolongada',
+    },
+    {
+      en: "This week's vote ended in a tie. The previous votes have been cleared, the lowest-ranked candidate has been removed, and voting is open again for another 24 hours. Open the remaining film pages to read the synopses and cast your new vote.",
+      pt: 'A votação desta semana terminou empatada. Os votos anteriores foram limpos, o candidato com menos votos foi removido e a votação está novamente aberta por mais 24 horas. Abre as páginas dos filmes restantes, lê as sinopses e vota novamente.',
+    },
+    undefined,
+    {
+      actionLabel: {
+        en: 'Vote again in Movie Club',
+        pt: 'Votar novamente no Movie Club',
+      },
+      movies: remainingMovies.map((movie) => toEmailMovie(movie, 0)),
+    }
+  );
+  return { tie: true, closesAt: session.closesAt };
+};
 
 movieClubRoutes.post('/sessions/:sessionId/resolve', async (req, res, next) => {
   try {
@@ -1299,109 +1577,74 @@ movieClubRoutes.post('/sessions/:sessionId/resolve', async (req, res, next) => {
 
     const session = await repository.findOne({
       where: { id: sessionId },
-      relations: { candidates: { media: true, votes: true }, votes: true, curators: { user: true } },
+      relations: {
+        candidates: { media: true, votes: true },
+        votes: true,
+        curators: { user: true },
+      },
     });
-    if (!session) return next({ status: 404, message: 'Movie Club session not found.' });
-    if (!canManageSession(req, session)) return next({ status: 403, message: 'Movie Club manager access required.' });
-    if (session.status !== MovieClubSessionStatus.VOTING) return next({ status: 409, message: 'Voting is not active.' });
-    if (session.closesAt > new Date()) return next({ status: 409, message: 'Voting is still open.' });
-    const ranked = [...session.candidates].sort((a, b) => b.votes.length - a.votes.length);
-    const topVotes = ranked[0]?.votes.length ?? 0;
-    const leaders = ranked.filter((candidate) => candidate.votes.length === topVotes);
-    if (leaders.length === 1) {
-      session.status = MovieClubSessionStatus.SELECTED;
-      session.selectedMedia = leaders[0].media;
-      session.selectedAt = new Date();
-      await repository.save(session);
-      const selectedMovie = await movieDetails(leaders[0].media, req.locale);
-      await sendMovieClubEmail(
-        {
-          en: `Movie Club winner: ${selectedMovie.title}`,
-          pt: `Vencedor do Movie Club: ${selectedMovie.title}`,
-        },
-        {
-          en: `The votes are in. ${selectedMovie.title} is the Film of the Week with ${topVotes} votes. ${requesterText(selectedMovie)} Watch it on Plex, read the synopsis in Seerr+, and join the Movie Club discussion.`,
-          pt: `Os votos estão fechados. ${selectedMovie.title} é o Filme da Semana com ${topVotes} votos. ${requesterText(selectedMovie, true)} Vê no Plex, lê a sinopse no Seerr+ e junta-te à conversa do Movie Club.`,
-        },
-        undefined,
-        {
-          actionLabel: {
-            en: 'Open Film of the Week',
-            pt: 'Abrir Filme da Semana',
-          },
-          highlightMovie: toEmailMovie(selectedMovie, topVotes),
-          movies: [toEmailMovie(selectedMovie, topVotes)],
-        }
-      );
-      return res.json({ tie: false, winner: selectedMovie });
-    }
-    const lowestVotes = Math.min(...ranked.map((candidate) => candidate.votes.length));
-    const lowest = ranked.filter((candidate) => candidate.votes.length === lowestVotes);
-    const interestCounts = await Promise.all(lowest.map(async (candidate) => ({ candidate, count: (await getMediaRequesters(candidate.media.id, false)).length })));
-    interestCounts.sort((a, b) => a.count - b.count || b.candidate.id - a.candidate.id);
-    await getRepository(MovieClubCandidate).remove(interestCounts[0].candidate);
-    await getRepository(MovieClubVote).delete({ session: { id: session.id } });
-    session.closesAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-    await repository.save(session);
-    const remainingMovies = await Promise.all(
-      ranked
-        .filter((candidate) => candidate.id !== interestCounts[0].candidate.id)
-        .map((candidate) => movieDetails(candidate.media, req.locale))
-    );
-    await sendMovieClubEmail(
-      {
-        en: 'Movie Club tie-break: voting extended',
-        pt: 'Desempate do Movie Club: votação prolongada',
-      },
-      {
-        en: 'This week\'s vote ended in a tie. The previous votes have been cleared, the lowest-ranked candidate has been removed, and voting is open again for another 24 hours. Open the remaining film pages to read the synopses and cast your new vote.',
-        pt: 'A votação desta semana terminou empatada. Os votos anteriores foram limpos, o candidato com menos votos foi removido e a votação está novamente aberta por mais 24 horas. Abre as páginas dos filmes restantes, lê as sinopses e vota novamente.',
-      },
-      undefined,
-      {
-        actionLabel: {
-          en: 'Vote again in Movie Club',
-          pt: 'Votar novamente no Movie Club',
-        },
-        movies: remainingMovies.map((movie) => toEmailMovie(movie, 0)),
-      }
-    );
-    return res.json({ tie: true, closesAt: session.closesAt });
+    if (!session)
+      return next({ status: 404, message: 'Movie Club session not found.' });
+    if (!canManageSession(req, session))
+      return next({
+        status: 403,
+        message: 'Movie Club manager access required.',
+      });
+    if (session.status !== MovieClubSessionStatus.VOTING)
+      return next({ status: 409, message: 'Voting is not active.' });
+    if (session.closesAt > new Date())
+      return next({ status: 409, message: 'Voting is still open.' });
+
+    const result = await resolveMovieClubSession(session, req.locale);
+    return res.json(result);
   } catch (error) {
-    return next({ status: 500, message: error instanceof Error ? error.message : String(error) });
+    return next({
+      status: 500,
+      message: error instanceof Error ? error.message : String(error),
+    });
   }
 });
 
 movieClubRoutes.post('/sessions/:sessionId/close', async (req, res, next) => {
   try {
-    if (!canManageMovieClub(req)) return next({ status: 403, message: 'Administrator access required.' });
+    if (!canManageMovieClub(req))
+      return next({ status: 403, message: 'Administrator access required.' });
     const repository = getRepository(MovieClubSession);
     const sessionId = parsePositiveInteger(req.params.sessionId);
     if (!sessionId) {
       return next({ status: 400, message: 'Invalid Movie Club session id.' });
     }
     const session = await repository.findOne({ where: { id: sessionId } });
-    if (!session) return next({ status: 404, message: 'Movie Club session not found.' });
+    if (!session)
+      return next({ status: 404, message: 'Movie Club session not found.' });
     session.status = MovieClubSessionStatus.CLOSED;
     await repository.save(session);
     return res.status(204).send();
   } catch (error) {
-    return next({ status: 500, message: error instanceof Error ? error.message : String(error) });
+    return next({
+      status: 500,
+      message: error instanceof Error ? error.message : String(error),
+    });
   }
 });
 
 movieClubRoutes.delete('/sessions/:sessionId', async (req, res, next) => {
   try {
-    if (!canManageMovieClub(req)) return next({ status: 403, message: 'Administrator access required.' });
+    if (!canManageMovieClub(req))
+      return next({ status: 403, message: 'Administrator access required.' });
     const sessionId = parsePositiveInteger(req.params.sessionId);
     if (!sessionId) {
       return next({ status: 400, message: 'Invalid Movie Club session id.' });
     }
     const result = await getRepository(MovieClubSession).delete(sessionId);
-    if (!result.affected) return next({ status: 404, message: 'Movie Club session not found.' });
+    if (!result.affected)
+      return next({ status: 404, message: 'Movie Club session not found.' });
     return res.status(204).send();
   } catch (error) {
-    return next({ status: 500, message: error instanceof Error ? error.message : String(error) });
+    return next({
+      status: 500,
+      message: error instanceof Error ? error.message : String(error),
+    });
   }
 });
 

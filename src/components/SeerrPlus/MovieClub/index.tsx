@@ -2,7 +2,7 @@ import Button from '@app/components/Common/Button';
 import PageTitle from '@app/components/Common/PageTitle';
 import { Permission, useUser } from '@app/hooks/useUser';
 import defineMessages from '@app/utils/defineMessages';
-import { ChatBubbleLeftRightIcon, TrophyIcon } from '@heroicons/react/24/outline';
+import { TrophyIcon } from '@heroicons/react/24/outline';
 import axios from 'axios';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
@@ -49,8 +49,7 @@ const messages = defineMessages('components.SeerrPlus.MovieClub', {
     'Vote for requested movies already available in Plex, watch together, then discuss them on WhatsApp.',
   filmOfTheWeek: 'Film of the Week: {title}',
   voteThisWeek: "Vote for this week's film",
-  highlightSelected:
-    'Watch it in Plex, then join the WhatsApp discussion.',
+  highlightSelected: 'Watch it in Plex, then join the WhatsApp discussion.',
   highlightVoting:
     '{count} requested films available in Plex are waiting for your vote.',
   interested: 'Interested',
@@ -100,10 +99,10 @@ const messages = defineMessages('components.SeerrPlus.MovieClub', {
   noHistory: 'No Movie Club winners have been selected yet.',
   tieExtended:
     'There was a tie. Votes were cleared, one candidate was removed, and voting was extended for 24 hours.',
-  prepareVote: 'Prepare this week\'s vote',
+  prepareVote: "Prepare this week's vote",
   delegatedHelp:
     'The administrator can select the films now, or leave the selection empty and assign a responsible user to choose exactly four films.',
-  chooseFour: 'Choose the four films for this week\'s vote.',
+  chooseFour: "Choose the four films for this week's vote.",
   deadline: 'Voting deadline',
   oneWeek: 'One week',
   manualDate: 'Choose date manually',
@@ -111,7 +110,7 @@ const messages = defineMessages('components.SeerrPlus.MovieClub', {
   votingStart: 'Voting start',
   weeklySuggestions: '{count} suggestions this week',
   topTenHelp:
-    'Showing this week\'s top 10, prioritizing community suggestions and films with the most interested users.',
+    "Showing this week's top 10, prioritizing community suggestions and films with the most interested users.",
   startNow: 'Start immediately',
   scheduledStart: 'Schedule start',
   scheduleVote: 'Schedule voting',
@@ -205,7 +204,9 @@ export const MovieClubHighlight = () => {
     >
       <div className="flex items-center gap-3 text-amber-300">
         <TrophyIcon className="h-6 w-6" />
-        <span className="font-semibold">{intl.formatMessage(messages.title)}</span>
+        <span className="font-semibold">
+          {intl.formatMessage(messages.title)}
+        </span>
       </div>
       <div className="mt-2 text-xl font-bold text-white">
         {selected
@@ -283,9 +284,7 @@ const CandidateCard = ({
               disabled={disabled}
               onClick={onSelect}
             >
-              {intl.formatMessage(
-                selected ? messages.selected : messages.vote
-              )}
+              {intl.formatMessage(selected ? messages.selected : messages.vote)}
             </Button>
           </div>
         )}
@@ -294,11 +293,7 @@ const CandidateCard = ({
   );
 };
 
-const WinnersSpotlight = ({
-  sessions,
-}: {
-  sessions?: Session[];
-}) => {
+const WinnersSpotlight = ({ sessions }: { sessions?: Session[] }) => {
   const intl = useIntl();
   const winners =
     sessions
@@ -418,10 +413,9 @@ const WinnersSpotlight = ({
 const MovieClub = () => {
   const intl = useIntl();
   const { hasPermission } = useUser();
-  const { data, mutate } = useSWR<ClubData>(
-    '/api/v1/seerrplus/movie-club',
-    { refreshInterval: 15000 }
-  );
+  const { data, mutate } = useSWR<ClubData>('/api/v1/seerrplus/movie-club', {
+    refreshInterval: 15000,
+  });
   const isAdmin = hasPermission(Permission.ADMIN);
   const session = data?.session;
   const isPreparation = session?.status === 3 || session?.status === 4;
@@ -513,10 +507,9 @@ const MovieClub = () => {
           curatorUserIds,
           ...(!session || isPreparation
             ? {
-                startsAt:
-                  draft
-                    ? null
-                    : startMode === 'scheduled'
+                startsAt: draft
+                  ? null
+                  : startMode === 'scheduled'
                     ? new Date(startsAt).toISOString()
                     : null,
               }
@@ -540,8 +533,8 @@ const MovieClub = () => {
     } catch (requestError) {
       setError(
         axios.isAxiosError(requestError)
-          ? requestError.response?.data?.message ??
-              intl.formatMessage(messages.createFailed)
+          ? (requestError.response?.data?.message ??
+              intl.formatMessage(messages.createFailed))
           : intl.formatMessage(messages.createFailed)
       );
     }
@@ -560,8 +553,8 @@ const MovieClub = () => {
     } catch (requestError) {
       setError(
         axios.isAxiosError(requestError)
-          ? requestError.response?.data?.message ??
-              intl.formatMessage(messages.updateFailed)
+          ? (requestError.response?.data?.message ??
+              intl.formatMessage(messages.updateFailed))
           : intl.formatMessage(messages.updateFailed)
       );
     }
@@ -614,8 +607,8 @@ const MovieClub = () => {
     } catch (requestError) {
       setError(
         axios.isAxiosError(requestError)
-          ? requestError.response?.data?.message ??
-              intl.formatMessage(messages.randomPickFailed)
+          ? (requestError.response?.data?.message ??
+              intl.formatMessage(messages.randomPickFailed))
           : intl.formatMessage(messages.randomPickFailed)
       );
     } finally {
@@ -623,6 +616,7 @@ const MovieClub = () => {
     }
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const resolveVote = async () => {
     if (
       !session ||
@@ -641,8 +635,8 @@ const MovieClub = () => {
     } catch (requestError) {
       setError(
         axios.isAxiosError(requestError)
-          ? requestError.response?.data?.message ??
-              intl.formatMessage(messages.updateFailed)
+          ? (requestError.response?.data?.message ??
+              intl.formatMessage(messages.updateFailed))
           : intl.formatMessage(messages.updateFailed)
       );
     }
@@ -651,14 +645,15 @@ const MovieClub = () => {
   const deleteSession = async () => {
     if (!session || !window.confirm(intl.formatMessage(messages.deleteConfirm)))
       return;
-    await axios.delete(
-      `/api/v1/seerrplus/movie-club/sessions/${session.id}`
-    );
+    await axios.delete(`/api/v1/seerrplus/movie-club/sessions/${session.id}`);
     await Promise.all([mutate(), mutateHistory()]);
   };
 
   const startNewVote = async () => {
-    if (!session || !window.confirm(intl.formatMessage(messages.newVoteConfirm)))
+    if (
+      !session ||
+      !window.confirm(intl.formatMessage(messages.newVoteConfirm))
+    )
       return;
     await axios.post(
       `/api/v1/seerrplus/movie-club/sessions/${session.id}/close`
@@ -801,11 +796,14 @@ const MovieClub = () => {
       ) : null}
       <div className="mt-4 grid gap-3 lg:grid-cols-2">
         {eligible?.results.map((candidate) => (
+          // eslint-disable-next-line jsx-a11y/label-has-associated-control
           <label
             key={candidate.mediaId}
+            htmlFor={`candidate-${candidate.mediaId}`}
             className="flex cursor-pointer items-start gap-3 rounded border border-gray-700 p-3 text-white"
           >
             <input
+              id={`candidate-${candidate.mediaId}`}
               className="mt-1 shrink-0"
               type="checkbox"
               checked={selected.includes(candidate.mediaId)}
@@ -940,7 +938,9 @@ const MovieClub = () => {
                 }
               }}
             >
-              <option value="week">{intl.formatMessage(messages.oneWeek)}</option>
+              <option value="week">
+                {intl.formatMessage(messages.oneWeek)}
+              </option>
               <option value="manual">
                 {intl.formatMessage(messages.manualDate)}
               </option>
@@ -1058,7 +1058,10 @@ const MovieClub = () => {
                   {intl.formatMessage(messages.votingCloses, {
                     date: new Date(session.closesAt).toLocaleString(),
                   })}{' '}
-                  · {intl.formatMessage(messages.votes, { count: session.totalVotes })}
+                  ·{' '}
+                  {intl.formatMessage(messages.votes, {
+                    count: session.totalVotes,
+                  })}
                 </p>
                 {session.curators.length > 0 && (
                   <p className="mt-1 text-sm text-amber-200">
@@ -1072,7 +1075,10 @@ const MovieClub = () => {
               <div className="flex flex-wrap gap-2">
                 {canManage && (
                   <>
-                    <Button buttonType="ghost" onClick={() => setIsEditing(true)}>
+                    <Button
+                      buttonType="ghost"
+                      onClick={() => setIsEditing(true)}
+                    >
                       {intl.formatMessage(messages.edit)}
                     </Button>
                     {isAdmin && (
@@ -1101,7 +1107,9 @@ const MovieClub = () => {
                     }
                     disabled={session.status !== 0}
                     onSelect={
-                      session.status === 0 ? () => vote(candidate.id) : undefined
+                      session.status === 0
+                        ? () => vote(candidate.id)
+                        : undefined
                     }
                   />
                   {isAdmin && session.status === 0 && (
