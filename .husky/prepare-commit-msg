@@ -1,2 +1,2 @@
-
-exec < /dev/tty && npx cz --hook || true
+# Disabled - GitHub Desktop doesn't support interactive terminal prompts
+# node_modules/.bin/cz --hook || true

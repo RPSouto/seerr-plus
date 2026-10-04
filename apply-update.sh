@@ -1,23 +1,36 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+set -euo pipefail
 
-TARGET_DIR=$1
+SOURCE_DIR="${1:-$PWD}"
+PACKAGE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-if [ -z "$TARGET_DIR" ]; then
-  echo "Usage: ./apply-update.sh <target_directory>"
-  echo "Example: ./apply-update.sh ~/Docker/Seerr-Plus"
+if [ ! -d "$SOURCE_DIR" ]; then
+  echo "Source directory not found: $SOURCE_DIR" >&2
   exit 1
 fi
 
-echo "Applying update to $TARGET_DIR..."
+if [ ! -f "$SOURCE_DIR/package.json" ]; then
+  echo "This does not look like the Seerr+ source directory: $SOURCE_DIR" >&2
+  exit 1
+fi
 
-# Ensure target exists
-mkdir -p "$TARGET_DIR"
+copy_file() {
+  local relative_path="$1"
+  local source_file="$PACKAGE_DIR/$relative_path"
+  local target_file="$SOURCE_DIR/$relative_path"
 
-# Clean old source directories to remove stale/renamed files that break typescript build
-rm -rf "$TARGET_DIR/server" "$TARGET_DIR/src" "$TARGET_DIR/public" "$TARGET_DIR/scripts" "$TARGET_DIR/bin"
+  if [ ! -f "$source_file" ]; then
+    echo "Missing package file: $relative_path" >&2
+    exit 1
+  fi
 
-# Copy all updated files over
-cp -r ./* "$TARGET_DIR/"
+  mkdir -p "$(dirname "$target_file")"
+  cp "$source_file" "$target_file"
+}
 
-echo "Update applied successfully!"
+copy_file "SEERR_PLUS_VERSION"
+copy_file "README.md"
+copy_file "CHANGELOG-SEERR-PLUS.md"
+copy_file "server/routes/moviefight.ts"
+
+echo "Seerr+ v1.8.445 files applied to $SOURCE_DIR"
