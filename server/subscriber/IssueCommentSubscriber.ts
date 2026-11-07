@@ -1,7 +1,6 @@
 import TheMovieDb from '@server/api/themoviedb';
 import { IssueType, IssueTypeName } from '@server/constants/issue';
 import { MediaType } from '@server/constants/media';
-import { getRepository } from '@server/datasource';
 import IssueComment from '@server/entity/IssueComment';
 import Media from '@server/entity/Media';
 import { User } from '@server/entity/User';
@@ -10,7 +9,11 @@ import { Permission } from '@server/lib/permissions';
 import { getMediaInterestedUsers } from '@server/lib/seerrplus/requests';
 import logger from '@server/logger';
 import { sortBy } from 'lodash';
-import type { EntitySubscriberInterface, InsertEvent } from 'typeorm';
+import type {
+  EntityManager,
+  EntitySubscriberInterface,
+  InsertEvent,
+} from 'typeorm';
 import { EventSubscriber } from 'typeorm';
 
 @EventSubscriber()
@@ -19,24 +22,27 @@ export class IssueCommentSubscriber implements EntitySubscriberInterface<IssueCo
     return IssueComment;
   }
 
-  private async sendIssueCommentNotification(entity: IssueComment) {
+  private async sendIssueCommentNotification(
+    manager: EntityManager,
+    entity: IssueComment
+  ) {
     let title: string;
     let image: string;
     const tmdb = new TheMovieDb();
 
     try {
       const issue = (
-        await getRepository(IssueComment).findOneOrFail({
+        await manager.getRepository(IssueComment).findOneOrFail({
           where: { id: entity.id },
-          relations: { issue: true },
+          relations: { issue: { createdBy: true } },
         })
       ).issue;
 
-      const createdBy = await getRepository(User).findOneOrFail({
+      const createdBy = await manager.getRepository(User).findOneOrFail({
         where: { id: issue.createdBy.id },
       });
 
-      const media = await getRepository(Media).findOneOrFail({
+      const media = await manager.getRepository(Media).findOneOrFail({
         where: { id: issue.media.id },
       });
 
@@ -92,15 +98,12 @@ export class IssueCommentSubscriber implements EntitySubscriberInterface<IssueCo
                 user.id !== entity.user.id
             )
             .forEach((user) =>
-              notificationManager.sendNotification(
-                Notification.ISSUE_COMMENT,
-                {
-                  ...payload,
-                  notifyAdmin: false,
-                  notifySystem: false,
-                  notifyUser: user,
-                }
-              )
+              notificationManager.sendNotification(Notification.ISSUE_COMMENT, {
+                ...payload,
+                notifyAdmin: false,
+                notifySystem: false,
+                notifyUser: user,
+              })
             );
 
           logger.info('Sent removal comment notification to eligible users', {
@@ -136,11 +139,11 @@ export class IssueCommentSubscriber implements EntitySubscriberInterface<IssueCo
     }
   }
 
-  public afterInsert(event: InsertEvent<IssueComment>): void {
+  public async afterInsert(event: InsertEvent<IssueComment>): Promise<void> {
     if (!event.entity) {
       return;
     }
 
-    this.sendIssueCommentNotification(event.entity);
+    await this.sendIssueCommentNotification(event.manager, event.entity);
   }
 }

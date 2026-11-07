@@ -1,13 +1,12 @@
 import csurf from '@dr.pogodin/csurf';
 import PlexAPI from '@server/api/plexapi';
-import dataSource, { getRepository, isPgsql } from '@server/datasource';
+import dataSource, { getRepository } from '@server/datasource';
 import DiscoverSlider from '@server/entity/DiscoverSlider';
 import { Session } from '@server/entity/Session';
 import { User } from '@server/entity/User';
 import { initI18n } from '@server/i18n';
 import { startJobs } from '@server/job/schedule';
 import notificationManager from '@server/lib/notifications';
-import { initializeSeerrPlus } from '@server/lib/seerrplus';
 import DiscordAgent from '@server/lib/notifications/agents/discord';
 import EmailAgent from '@server/lib/notifications/agents/email';
 import GotifyAgent from '@server/lib/notifications/agents/gotify';
@@ -19,6 +18,7 @@ import TelegramAgent from '@server/lib/notifications/agents/telegram';
 import WebhookAgent from '@server/lib/notifications/agents/webhook';
 import WebPushAgent from '@server/lib/notifications/agents/webpush';
 import checkOverseerrMerge from '@server/lib/overseerrMerge';
+import { initializeSeerrPlus } from '@server/lib/seerrplus';
 import { getSettings } from '@server/lib/settings';
 import logger from '@server/logger';
 import clearCookies from '@server/middleware/clearcookies';
@@ -30,8 +30,11 @@ import { getAppVersion } from '@server/utils/appVersion';
 import createCustomProxyAgent, {
   setForceIpv4First,
 } from '@server/utils/customProxyAgent';
+import { isPgsql } from '@server/utils/dbType';
+import { initDemoData } from '@server/utils/demoMode';
 import { initializeDnsCache } from '@server/utils/dnsCache';
 import restartFlag from '@server/utils/restartFlag';
+import '@server/utils/userAgent';
 import { getClientIp } from '@supercharge/request-ip';
 import { TypeormStore } from 'connect-typeorm/out';
 import cookieParser from 'cookie-parser';
@@ -122,7 +125,17 @@ app
         });
 
         const plexapi = new PlexAPI({ plexToken: admin.plexToken });
-        await plexapi.syncLibraries();
+
+        try {
+          await plexapi.syncLibraries();
+        } catch {
+          // Leave the existing libraries untouched so the migration retries on
+          // the next startup instead of discarding the user's configuration
+          logger.warn(
+            'Failed to migrate Plex libraries; will retry on next startup',
+            { label: 'Settings' }
+          );
+        }
       }
     }
 
@@ -243,6 +256,13 @@ app
       };
       next();
     });
+
+    // Init demo mode and catch some API routes
+    if (process.env.UNSAFE_DO_NOT_USE_DEMO === 'true') {
+      logger.info('Demo mode enabled, seeding database with demo data');
+      await initDemoData(server);
+    }
+
     server.use('/api/v1', routes);
 
     // Do not set cookies so CDNs can cache them
@@ -255,10 +275,11 @@ app
         err: { status: number; message: string; errors: string[] },
         _req: Request,
         res: Response,
-        // We must provide a next function for the function signature here even though its not used
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        _next: NextFunction
+        next: NextFunction
       ) => {
+        if (res.headersSent) {
+          return next(err);
+        }
         // format error
         res.status(err.status || 500).json({
           message: err.message,

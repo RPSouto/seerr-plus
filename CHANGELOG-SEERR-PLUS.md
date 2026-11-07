@@ -1,5 +1,11 @@
 # Seerr+ Changelog
 
+## seerr-plus-v1.8.450
+- Upstream merge of Seerr v3.5.1 (incorporating v3.5.0 and v3.5.1 security patches, Headless UI 2.x, Node 22 upgrade, and library sync improvements).
+- Fully preserved Seerr+ features: Movie Club (film of the week, voting, suggestions, automated scheduler), Removal Votes & Issues, Interested Users, and Tautulli Plex Stream Statistics.
+- Updated database datasource and typing helpers to align with upstream changes.
+- Cleaned build pipeline and update script for Docker deployment.
+
 ## seerr-plus-v1.8.445
 - Fix Movie Fight progression so completed fight pairs can generate the next scheduled fight even while other fights remain scheduled or active.
 - Prevent existing scheduled next-round fights from being recreated or having their schedule repeatedly overwritten.

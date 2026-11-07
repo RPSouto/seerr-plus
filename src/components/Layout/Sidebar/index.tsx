@@ -4,14 +4,14 @@ import LibraryStats from '@app/components/SeerrPlus/LibraryStats';
 import useClickOutside from '@app/hooks/useClickOutside';
 import { Permission, useUser } from '@app/hooks/useUser';
 import defineMessages from '@app/utils/defineMessages';
-import { Transition } from '@headlessui/react';
+import { Transition, TransitionChild } from '@headlessui/react';
 import {
   CogIcon,
   EyeSlashIcon,
   FilmIcon,
   QueueListIcon,
-  TrophyIcon,
   SparklesIcon,
+  TrophyIcon,
   TvIcon,
   UsersIcon,
   XMarkIcon,
@@ -149,7 +149,7 @@ const Sidebar = ({
       <div className="lg:hidden">
         <Transition as={Fragment} show={open}>
           <div className="fixed inset-0 z-40 flex">
-            <Transition.Child
+            <TransitionChild
               as="div"
               enter="transition-opacity ease-linear duration-300"
               enterFrom="opacity-0"
@@ -161,8 +161,8 @@ const Sidebar = ({
               <div className="fixed inset-0">
                 <div className="absolute inset-0 bg-gray-900 opacity-90" />
               </div>
-            </Transition.Child>
-            <Transition.Child
+            </TransitionChild>
+            <TransitionChild
               as="div"
               enter="transition-transform ease-in-out duration-300"
               enterFrom="-translate-x-full"
@@ -191,9 +191,7 @@ const Sidebar = ({
                         <Link href="/" className="relative block h-24 w-64">
                           <Image src="/logo_full.svg" alt="Logo" fill />
                         </Link>
-                        <span className="seerr-plus-brand">
-                          Plus
-                        </span>
+                        <span className="seerr-plus-brand">Plus</span>
                       </span>
                     </div>
                     <nav className="mt-10 flex-1 space-y-4 px-4">
@@ -244,7 +242,7 @@ const Sidebar = ({
                   {/* <!-- Force sidebar to shrink to fit close icon --> */}
                 </div>
               </>
-            </Transition.Child>
+            </TransitionChild>
           </div>
         </Transition>
       </div>

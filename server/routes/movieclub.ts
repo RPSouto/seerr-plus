@@ -1,6 +1,6 @@
 import TheMovieDb from '@server/api/themoviedb';
 import { MediaStatus, MediaType } from '@server/constants/media';
-import { getRepository, isPgsql } from '@server/datasource';
+import { getRepository } from '@server/datasource';
 import Media from '@server/entity/Media';
 import MovieClubCandidate from '@server/entity/MovieClubCandidate';
 import MovieClubCurator from '@server/entity/MovieClubCurator';
@@ -15,6 +15,7 @@ import type { MovieClubEmailMovie } from '@server/lib/seerrplus/movieClubNotific
 import { sendMovieClubEmail } from '@server/lib/seerrplus/movieClubNotifications';
 import { getMovieClubWeekKey } from '@server/lib/seerrplus/movieClubSuggestions';
 import { getMediaRequesters } from '@server/lib/seerrplus/requests';
+import { isPgsql } from '@server/utils/dbType';
 import type { Request } from 'express';
 import { Router } from 'express';
 import { In } from 'typeorm';

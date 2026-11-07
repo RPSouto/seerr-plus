@@ -16,6 +16,6 @@ This fork keeps the original Seerr request flow as intact as possible and adds S
 - Removal requests notify admins and interested users first; admins can then remove, reject, start a community vote, or close that vote at any time.
 - Users can opt in to publicly showing that they requested available media.
 
-Current Seerr+ release: `seerr-plus-v1.8.445`.
+Current Seerr+ release: `seerr-plus-v1.8.450` (based on Seerr v3.5.1).
 
 

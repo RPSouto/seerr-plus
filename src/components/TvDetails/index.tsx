@@ -21,10 +21,10 @@ import ManageSlideOver from '@app/components/ManageSlideOver';
 import MediaSlider from '@app/components/MediaSlider';
 import PersonCard from '@app/components/PersonCard';
 import RequestButton from '@app/components/RequestButton';
+import RequestModal from '@app/components/RequestModal';
+import PublicRequestersBadge from '@app/components/SeerrPlus/PublicRequestersBadge';
 import RemovalRequestButton from '@app/components/SeerrPlus/RemovalRequestButton';
 import RequestInterestUsers from '@app/components/SeerrPlus/RequestInterestUsers';
-import PublicRequestersBadge from '@app/components/SeerrPlus/PublicRequestersBadge';
-import RequestModal from '@app/components/RequestModal';
 import Slider from '@app/components/Slider';
 import StatusBadge from '@app/components/StatusBadge';
 import Season from '@app/components/TvDetails/Season';
@@ -38,7 +38,12 @@ import ErrorPage from '@app/pages/_error';
 import { sortCrewPriority } from '@app/utils/creditHelpers';
 import defineMessages from '@app/utils/defineMessages';
 import { refreshIntervalHelper } from '@app/utils/refreshIntervalHelper';
-import { Disclosure, Transition } from '@headlessui/react';
+import {
+  Disclosure,
+  DisclosureButton,
+  DisclosurePanel,
+  Transition,
+} from '@headlessui/react';
 import { ChevronDownIcon } from '@heroicons/react/24/outline';
 import {
   ArrowRightCircleIcon,
@@ -312,19 +317,26 @@ const TvDetails = ({ tv }: TvDetailsProps) => {
     return [...requestedSeasons, ...availableSeasons];
   };
 
-  const showHasSpecials = data.seasons.some(
-    (season) =>
-      season.seasonNumber === 0 &&
-      settings.currentSettings.enableSpecialEpisodes
-  );
+  // Mirrors the season list the request modal offers, so the two agree.
+  const requestableSeasons = data.seasons
+    .filter(
+      (season) =>
+        season.episodeCount !== 0 &&
+        (settings.currentSettings.enableSpecialEpisodes ||
+          season.seasonNumber !== 0)
+    )
+    .map((season) => season.seasonNumber);
 
-  const isComplete =
-    (showHasSpecials ? seasonCount + 1 : seasonCount) <=
-    getAllRequestedSeasons(false).length;
+  const isSeasonSetComplete = (is4k: boolean) => {
+    const requested = getAllRequestedSeasons(is4k);
+    return requestableSeasons.every((seasonNumber) =>
+      requested.includes(seasonNumber)
+    );
+  };
 
-  const is4kComplete =
-    (showHasSpecials ? seasonCount + 1 : seasonCount) <=
-    getAllRequestedSeasons(true).length;
+  const isComplete = isSeasonSetComplete(false);
+
+  const is4kComplete = isSeasonSetComplete(true);
 
   const streamingRegion = user?.settings?.streamingRegion
     ? user.settings.streamingRegion
@@ -688,78 +700,81 @@ const TvDetails = ({ tv }: TvDetailsProps) => {
             is4kShowComplete={is4kComplete}
           />
           <div className="flex w-full items-center justify-center sm:w-auto sm:justify-start">
-          <RemovalRequestButton
-            mediaId={data.mediaInfo?.id}
-            mediaTitle={data.name}
-            available={
-              data.mediaInfo?.status === MediaStatus.AVAILABLE ||
-              data.mediaInfo?.status === MediaStatus.PARTIALLY_AVAILABLE
-            }
-            available4k={
-              data.mediaInfo?.status4k === MediaStatus.AVAILABLE ||
-              data.mediaInfo?.status4k === MediaStatus.PARTIALLY_AVAILABLE
-            }
-            managed={
-              data.mediaInfo?.status !== MediaStatus.UNKNOWN &&
-              data.mediaInfo?.status !== MediaStatus.DELETED
-            }
-            managed4k={
-              data.mediaInfo?.status4k !== MediaStatus.UNKNOWN &&
-              data.mediaInfo?.status4k !== MediaStatus.DELETED
-            }
-          />
-          {(data.mediaInfo?.status === MediaStatus.AVAILABLE ||
-            data.mediaInfo?.status === MediaStatus.PARTIALLY_AVAILABLE ||
-            (settings.currentSettings.series4kEnabled &&
-              hasPermission([Permission.REQUEST_4K, Permission.REQUEST_4K_TV], {
-                type: 'or',
-              }) &&
-              (data.mediaInfo?.status4k === MediaStatus.AVAILABLE ||
-                data?.mediaInfo?.status4k ===
-                  MediaStatus.PARTIALLY_AVAILABLE))) &&
-            hasPermission(
-              [Permission.CREATE_ISSUES, Permission.MANAGE_ISSUES],
-              {
-                type: 'or',
+            <RemovalRequestButton
+              mediaId={data.mediaInfo?.id}
+              mediaTitle={data.name}
+              available={
+                data.mediaInfo?.status === MediaStatus.AVAILABLE ||
+                data.mediaInfo?.status === MediaStatus.PARTIALLY_AVAILABLE
               }
-            ) && (
-              <Tooltip content={intl.formatMessage(messages.reportissue)}>
-                <Button
-                  buttonType="warning"
-                  onClick={() => setShowIssueModal(true)}
-                  className="ml-2 first:ml-0"
-                >
-                  <ExclamationTriangleIcon />
-                </Button>
-              </Tooltip>
-            )}
-          {hasPermission(Permission.MANAGE_REQUESTS) && data.mediaInfo && (
-            <Tooltip content={intl.formatMessage(messages.manageseries)}>
-              <Button
-                buttonType="ghost"
-                onClick={() => setShowManager(true)}
-                className="relative ml-2 first:ml-0"
-              >
-                <CogIcon className="!mr-0" />
-                {hasPermission(
-                  [Permission.MANAGE_ISSUES, Permission.VIEW_ISSUES],
+              available4k={
+                data.mediaInfo?.status4k === MediaStatus.AVAILABLE ||
+                data.mediaInfo?.status4k === MediaStatus.PARTIALLY_AVAILABLE
+              }
+              managed={
+                data.mediaInfo?.status !== MediaStatus.UNKNOWN &&
+                data.mediaInfo?.status !== MediaStatus.DELETED
+              }
+              managed4k={
+                data.mediaInfo?.status4k !== MediaStatus.UNKNOWN &&
+                data.mediaInfo?.status4k !== MediaStatus.DELETED
+              }
+            />
+            {(data.mediaInfo?.status === MediaStatus.AVAILABLE ||
+              data.mediaInfo?.status === MediaStatus.PARTIALLY_AVAILABLE ||
+              (settings.currentSettings.series4kEnabled &&
+                hasPermission(
+                  [Permission.REQUEST_4K, Permission.REQUEST_4K_TV],
                   {
                     type: 'or',
                   }
                 ) &&
-                  (
-                    data.mediaInfo?.issues.filter(
-                      (issue) => issue.status === IssueStatus.OPEN
-                    ) ?? []
-                  ).length > 0 && (
-                    <>
-                      <div className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-red-600" />
-                      <div className="absolute -right-1 -top-1 h-3 w-3 animate-ping rounded-full bg-red-600" />
-                    </>
-                  )}
-              </Button>
-            </Tooltip>
-          )}
+                (data.mediaInfo?.status4k === MediaStatus.AVAILABLE ||
+                  data?.mediaInfo?.status4k ===
+                    MediaStatus.PARTIALLY_AVAILABLE))) &&
+              hasPermission(
+                [Permission.CREATE_ISSUES, Permission.MANAGE_ISSUES],
+                {
+                  type: 'or',
+                }
+              ) && (
+                <Tooltip content={intl.formatMessage(messages.reportissue)}>
+                  <Button
+                    buttonType="warning"
+                    onClick={() => setShowIssueModal(true)}
+                    className="ml-2 first:ml-0"
+                  >
+                    <ExclamationTriangleIcon />
+                  </Button>
+                </Tooltip>
+              )}
+            {hasPermission(Permission.MANAGE_REQUESTS) && data.mediaInfo && (
+              <Tooltip content={intl.formatMessage(messages.manageseries)}>
+                <Button
+                  buttonType="ghost"
+                  onClick={() => setShowManager(true)}
+                  className="relative ml-2 first:ml-0"
+                >
+                  <CogIcon className="!mr-0" />
+                  {hasPermission(
+                    [Permission.MANAGE_ISSUES, Permission.VIEW_ISSUES],
+                    {
+                      type: 'or',
+                    }
+                  ) &&
+                    (
+                      data.mediaInfo?.issues.filter(
+                        (issue) => issue.status === IssueStatus.OPEN
+                      ) ?? []
+                    ).length > 0 && (
+                      <>
+                        <div className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-red-600" />
+                        <div className="absolute -right-1 -top-1 h-3 w-3 animate-ping rounded-full bg-red-600" />
+                      </>
+                    )}
+                </Button>
+              </Tooltip>
+            )}
           </div>
           <RequestInterestUsers mediaId={data.mediaInfo?.id} />
         </div>
@@ -889,7 +904,7 @@ const TvDetails = ({ tv }: TvDetailsProps) => {
                   <Disclosure key={`season-discoslure-${season.seasonNumber}`}>
                     {({ open }) => (
                       <>
-                        <Disclosure.Button
+                        <DisclosureButton
                           className={`mt-2 flex w-full items-center justify-between space-x-2 border-gray-700 bg-gray-800 px-4 py-2 text-gray-200 ${
                             open
                               ? 'rounded-t-md border-l border-r border-t'
@@ -1103,8 +1118,9 @@ const TvDetails = ({ tv }: TvDetailsProps) => {
                               open ? 'rotate-180' : ''
                             } h-6 w-6 text-gray-500`}
                           />
-                        </Disclosure.Button>
+                        </DisclosureButton>
                         <Transition
+                          as="div"
                           show={open}
                           enter="transition-opacity duration-100 ease-out"
                           enterFrom="opacity-0"
@@ -1115,12 +1131,12 @@ const TvDetails = ({ tv }: TvDetailsProps) => {
                           // Not sure why this transition is adding a margin without this here
                           style={{ margin: '0px' }}
                         >
-                          <Disclosure.Panel className="w-full rounded-b-md border-b border-l border-r border-gray-700 px-4 pb-2">
+                          <DisclosurePanel className="w-full rounded-b-md border-b border-l border-r border-gray-700 px-4 pb-2">
                             <Season
                               tvId={data.id}
                               seasonNumber={season.seasonNumber}
                             />
-                          </Disclosure.Panel>
+                          </DisclosurePanel>
                         </Transition>
                       </>
                     )}
