@@ -4,7 +4,16 @@ import Issue from '@server/entity/Issue';
 import IssueComment from '@server/entity/IssueComment';
 import Media from '@server/entity/Media';
 import { MediaRequest } from '@server/entity/MediaRequest';
+import MediaRequestParticipant from '@server/entity/MediaRequestParticipant';
+import MovieClubCandidate from '@server/entity/MovieClubCandidate';
+import MovieClubCurator from '@server/entity/MovieClubCurator';
+import MovieClubSession from '@server/entity/MovieClubSession';
+import MovieClubSuggestion from '@server/entity/MovieClubSuggestion';
+import MovieClubVote from '@server/entity/MovieClubVote';
 import OverrideRule from '@server/entity/OverrideRule';
+import RemovalVote from '@server/entity/RemovalVote';
+import RemovalVoteParticipant from '@server/entity/RemovalVoteParticipant';
+import RemovalVoteSession from '@server/entity/RemovalVoteSession';
 import Season from '@server/entity/Season';
 import SeasonRequest from '@server/entity/SeasonRequest';
 import { Session } from '@server/entity/Session';
@@ -31,7 +40,16 @@ const entities = [
   IssueComment,
   Media,
   MediaRequest,
+  MediaRequestParticipant,
+  MovieClubCandidate,
+  MovieClubCurator,
+  MovieClubSession,
+  MovieClubSuggestion,
+  MovieClubVote,
   OverrideRule,
+  RemovalVote,
+  RemovalVoteParticipant,
+  RemovalVoteSession,
   Season,
   SeasonRequest,
   Session,
