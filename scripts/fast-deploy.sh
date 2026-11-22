@@ -166,6 +166,7 @@ BUILD_CMD=(
   -t "$IMAGE_REPOSITORY:$PKG_VERSION"
   -t "$IMAGE_REPOSITORY:$VERSION"
   -t "$IMAGE_REPOSITORY:seerr-plus-v$VERSION"
+  -t "$IMAGE_REPOSITORY:3.5.1"
   -t "$IMAGE_REPOSITORY:3.4.1"
   -t "$IMAGE_REPOSITORY:latest"
 )
@@ -181,6 +182,7 @@ BUILD_CMD+=("$PACKAGE_ROOT")
 printf 'Compilação concluída com sucesso com as tags:\n'
 printf '  - %s:%s\n' "$IMAGE_REPOSITORY" "$PKG_VERSION"
 printf '  - %s:%s\n' "$IMAGE_REPOSITORY" "$VERSION"
+printf '  - %s:3.5.1 (retrocompatibilidade)\n' "$IMAGE_REPOSITORY"
 printf '  - %s:3.4.1 (retrocompatibilidade)\n' "$IMAGE_REPOSITORY"
 printf '  - %s:latest\n' "$IMAGE_REPOSITORY"
 
