@@ -59,9 +59,11 @@ const messages = defineMessages('components.Settings.SettingsSeerrPlus', {
 const SettingsSeerrPlus = () => {
   const intl = useIntl();
   const { addToast } = useToasts();
-  const { data, error, revalidate } = useSWR<SeerrPlusSettings>(
-    '/api/v1/settings/seerrplus'
-  );
+  const {
+    data,
+    error,
+    mutate: revalidate,
+  } = useSWR<SeerrPlusSettings>('/api/v1/settings/seerrplus');
 
   const SeerrPlusSchema = Yup.object().shape({
     removalVoteQuorum: Yup.number()
