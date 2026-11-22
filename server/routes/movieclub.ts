@@ -1,3 +1,4 @@
+import RadarrAPI from '@server/api/servarr/radarr';
 import TheMovieDb from '@server/api/themoviedb';
 import {
   MediaRequestStatus,
@@ -1539,13 +1540,48 @@ export const resolveMovieClubSession = async (
           );
 
           if (!hasActiveRequest) {
+            let tagIds: number[] | undefined;
+            if (
+              settings.seerrplus.movieClubRadarrTag &&
+              settings.radarr.length > 0
+            ) {
+              try {
+                const defaultRadarr =
+                  settings.radarr.find((r) => r.isDefault) ??
+                  settings.radarr[0];
+                if (defaultRadarr) {
+                  const radarr = new RadarrAPI({
+                    apiKey: defaultRadarr.apiKey,
+                    url: RadarrAPI.buildUrl(defaultRadarr, '/api/v3'),
+                  });
+                  const existingTags = await radarr.getTags();
+                  let match = existingTags.find(
+                    (t) =>
+                      t.label.toLowerCase() ===
+                      settings.seerrplus.movieClubRadarrTag.toLowerCase()
+                  );
+                  if (!match) {
+                    match = await radarr.createTag({
+                      label: settings.seerrplus.movieClubRadarrTag,
+                    });
+                  }
+                  if (match) {
+                    tagIds = [match.id];
+                  }
+                }
+              } catch (tagErr) {
+                logger.warn(
+                  `Could not resolve Radarr tag for Movie Club: ${tagErr instanceof Error ? tagErr.message : String(tagErr)}`,
+                  { label: 'Seerr+' }
+                );
+              }
+            }
+
             await MediaRequest.request(
               {
                 mediaId: leaders[0].media.tmdbId,
                 mediaType: MediaType.MOVIE,
-                tags: settings.seerrplus.movieClubRadarrTag
-                  ? [settings.seerrplus.movieClubRadarrTag]
-                  : undefined,
+                tags: tagIds,
               },
               adminUser
             );
