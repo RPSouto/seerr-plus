@@ -101,6 +101,31 @@ class GithubAPI extends ExternalAPI {
     }
   }
 
+  public async getSeerrPlusReleases({
+    take = 20,
+  }: {
+    take?: number;
+  } = {}): Promise<GitHubRelease[]> {
+    try {
+      const data = await this.get<GitHubRelease[]>(
+        '/repos/RPSouto/seerr-plus/releases',
+        {
+          params: {
+            per_page: take,
+          },
+        }
+      );
+
+      return data;
+    } catch (e) {
+      logger.warn('Failed to retrieve Seerr+ releases from GitHub.', {
+        label: 'GitHub API',
+        errorMessage: e instanceof Error ? e.message : String(e),
+      });
+      return [];
+    }
+  }
+
   public async getSeerrCommits({
     take = 20,
     branch = 'develop',

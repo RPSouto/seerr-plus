@@ -86,4 +86,7 @@ export interface StatusResponse {
   updateAvailable?: boolean;
   commitsBehind?: number;
   restartRequired: boolean;
+  seerrPlusVersion?: string;
+  seerrPlusUpdateAvailable?: boolean;
+  seerrPlusLatestVersion?: string;
 }

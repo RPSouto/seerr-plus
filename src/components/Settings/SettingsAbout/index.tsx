@@ -137,6 +137,37 @@ const SettingsAbout = () => {
               </a>
             )}
           </List.Item>
+          <List.Item
+            title="Seerr+ Release"
+            className="flex flex-row items-center truncate"
+          >
+            <code className="truncate">
+              {status?.seerrPlusVersion
+                ? status.seerrPlusVersion.replace('seerr-plus-', '')
+                : 'v1.8.460'}
+            </code>
+            <a
+              href="https://github.com/RPSouto/seerr-plus/releases"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {status?.seerrPlusUpdateAvailable ? (
+                <Badge
+                  badgeType="warning"
+                  className="ml-2 !cursor-pointer transition hover:bg-yellow-400"
+                >
+                  {intl.formatMessage(messages.outofdate)}
+                </Badge>
+              ) : (
+                <Badge
+                  badgeType="success"
+                  className="ml-2 !cursor-pointer transition hover:bg-green-400"
+                >
+                  {intl.formatMessage(messages.uptodate)}
+                </Badge>
+              )}
+            </a>
+          </List.Item>
           <List.Item title={intl.formatMessage(messages.totalmedia)}>
             {intl.formatNumber(data.totalMediaItems)}
           </List.Item>

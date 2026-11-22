@@ -69,7 +69,14 @@ const VersionStatus = ({ onClick }: VersionStatusProps) => {
         <ServerIcon className="h-6 w-6" />
       )}
       <div className="flex min-w-0 flex-1 flex-col truncate px-2 last:pr-0">
-        <span className="font-bold">{versionStream}</span>
+        <div className="flex items-center justify-between">
+          <span className="font-bold">{versionStream}</span>
+          <span className="ml-1 rounded border border-indigo-700/50 bg-indigo-950/70 px-1 font-mono text-[10px] font-medium text-indigo-300">
+            {data.seerrPlusVersion
+              ? data.seerrPlusVersion.replace('seerr-plus-', '')
+              : 'v1.8.460'}
+          </span>
+        </div>
         {data.commitsBehind !== undefined && (
           <span className="truncate">
             {data.commitTag === 'local' ? (

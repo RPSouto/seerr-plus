@@ -24,7 +24,11 @@ import {
   appDataPermissions,
   appDataStatus,
 } from '@server/utils/appDataVolume';
-import { getAppVersion, getCommitTag } from '@server/utils/appVersion';
+import {
+  getAppVersion,
+  getCommitTag,
+  getSeerrPlusVersion,
+} from '@server/utils/appVersion';
 import restartFlag from '@server/utils/restartFlag';
 import { isPerson } from '@server/utils/typeHelpers';
 import { Router } from 'express';
@@ -53,12 +57,15 @@ router.get<unknown, StatusResponse>('/status', async (req, res) => {
   const settings = getSettings();
   const currentVersion = getAppVersion();
   const commitTag = getCommitTag();
+  const seerrPlusVersion = getSeerrPlusVersion();
   const checkUpdate =
     req.query.checkUpdateAvailable !== undefined
       ? req.query.checkUpdateAvailable
       : settings.fullPublicSettings.versionCheck;
   let updateAvailable = false;
   let commitsBehind = 0;
+  let seerrPlusUpdateAvailable = false;
+  let seerrPlusLatestVersion: string | undefined;
 
   if (checkUpdate) {
     const githubApi = new GithubAPI();
@@ -93,12 +100,36 @@ router.get<unknown, StatusResponse>('/status', async (req, res) => {
         }
       }
     }
+
+    try {
+      const plusReleases = await githubApi.getSeerrPlusReleases({ take: 5 });
+      if (plusReleases.length) {
+        const latestRelease = plusReleases[0];
+        seerrPlusLatestVersion = latestRelease.tag_name;
+        const cleanLatest = latestRelease.tag_name.replace(
+          /^seerr-plus-v?/,
+          ''
+        );
+        const cleanCurrent = seerrPlusVersion.replace(/^seerr-plus-v?/, '');
+        if (cleanLatest !== cleanCurrent) {
+          seerrPlusUpdateAvailable = true;
+        }
+      }
+    } catch {
+      // ignore
+    }
   }
 
   return res.status(200).json({
     version: getAppVersion(),
     commitTag: getCommitTag(),
-    ...(checkUpdate && { updateAvailable, commitsBehind }),
+    seerrPlusVersion,
+    seerrPlusUpdateAvailable,
+    seerrPlusLatestVersion,
+    ...(checkUpdate && {
+      updateAvailable: updateAvailable || seerrPlusUpdateAvailable,
+      commitsBehind,
+    }),
     restartRequired: restartFlag.isSet(),
   });
 });

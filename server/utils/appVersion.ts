@@ -1,8 +1,12 @@
 import logger from '@server/logger';
-import { existsSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import path from 'path';
 
 const COMMIT_TAG_PATH = path.join(__dirname, '../../committag.json');
+const SEERR_PLUS_VERSION_PATH = path.join(
+  __dirname,
+  '../../SEERR_PLUS_VERSION'
+);
 let commitTag = 'local';
 
 if (existsSync(COMMIT_TAG_PATH)) {
@@ -13,6 +17,23 @@ if (existsSync(COMMIT_TAG_PATH)) {
 
 export const getCommitTag = (): string => {
   return commitTag;
+};
+
+export const getSeerrPlusVersion = (): string => {
+  try {
+    if (existsSync(SEERR_PLUS_VERSION_PATH)) {
+      const version = readFileSync(SEERR_PLUS_VERSION_PATH, 'utf-8').trim();
+      if (version) return version;
+    }
+  } catch {
+    // ignore
+  }
+
+  if (commitTag && commitTag.startsWith('seerr-plus')) {
+    return commitTag;
+  }
+
+  return 'seerr-plus-v1.8.460';
 };
 
 export const getAppVersion = (): string => {
