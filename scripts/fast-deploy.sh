@@ -207,35 +207,13 @@ fi
 
 cd "$DEPLOY_DIR"
 
-# Stop any rogue container binding port 5055 to avoid conflicts
-existing_port_containers="$("${DOCKER[@]}" ps -q --filter "publish=5055" || true)"
-if [[ -n "$existing_port_containers" ]]; then
-  printf 'A parar contentor existente na porta 5055...\n'
-  "${DOCKER[@]}" stop $existing_port_containers >/dev/null 2>&1 || true
-fi
-"${DOCKER[@]}" rm -f seerr-plus-seerr-1 seerr seerr-plus-deploy 2>/dev/null || true
+# Clean up any leftover temporary override from legacy scripts
+rm -f "${DEPLOY_DIR}/docker-compose.seerr-plus.yml" 2>/dev/null || true
 
-# Compose override ensuring standard container_name and latest local image
-OVERRIDE="docker-compose.seerr-plus.yml"
-cat <<EOF > "$OVERRIDE"
-services:
-  ${COMPOSE_SERVICE}:
-    container_name: seerr
-    image: ${PRIMARY_IMAGE}
-    pull_policy: never
-EOF
-
-cleanup_override() {
-  if [[ -f "${DEPLOY_DIR}/${OVERRIDE}" ]]; then
-    rm -f "${DEPLOY_DIR}/${OVERRIDE}" 2>/dev/null || true
-  fi
-}
-# Set trap to clean up the override file on exit
-trap cleanup_override EXIT
-
-printf 'A iniciar contentor Seerr Plus (%s)...\n' "$COMPOSE_SERVICE"
-"${DOCKER[@]}" compose -f "${COMPOSE_FILE}" -f "${OVERRIDE}" up -d --force-recreate "${COMPOSE_SERVICE}"
-"${DOCKER[@]}" compose -f "${COMPOSE_FILE}" -f "${OVERRIDE}" ps "${COMPOSE_SERVICE}"
+# Recreate the compose stack with the newly built local image
+printf 'A iniciar contentores em %s (usando %s)...\n' "$DEPLOY_DIR" "$COMPOSE_FILE"
+"${DOCKER[@]}" compose -f "${COMPOSE_FILE}" up -d --force-recreate
+"${DOCKER[@]}" compose -f "${COMPOSE_FILE}" ps
 
 # 4. Healthcheck & Version Verification
 printf '\n[4/4] A verificar estado e versão em %s...\n' "$HEALTH_URL"
@@ -243,13 +221,10 @@ healthy=false
 STATUS_RESPONSE=""
 
 for _attempt in $(seq 1 45); do
-  is_running="$("${DOCKER[@]}" inspect -f '{{.State.Running}}' seerr 2>/dev/null || echo "false")"
-  if [[ "$is_running" == "true" ]]; then
-    STATUS_RESPONSE="$(curl -fsS "$HEALTH_URL" 2>/dev/null || true)"
-    if [[ -n "$STATUS_RESPONSE" ]]; then
-      healthy=true
-      break
-    fi
+  STATUS_RESPONSE="$(curl -fsS "$HEALTH_URL" 2>/dev/null || true)"
+  if [[ -n "$STATUS_RESPONSE" ]]; then
+    healthy=true
+    break
   fi
   sleep 2
 done
@@ -258,8 +233,8 @@ if [[ "$healthy" == "true" ]]; then
   printf '\nSeerr Plus está ativo e saudável!\n'
   printf 'Dados da API: %s\n' "$STATUS_RESPONSE"
 else
-  printf 'ERRO: Contentor não iniciou ou %s não respondeu no prazo de 90s.\n' "$HEALTH_URL" >&2
-  "${DOCKER[@]}" compose -f "${COMPOSE_FILE}" -f "${OVERRIDE}" logs --tail=50 "${COMPOSE_SERVICE}" >&2 || true
+  printf 'ERRO: O endpoint %s não respondeu no prazo de 90s.\n' "$HEALTH_URL" >&2
+  "${DOCKER[@]}" compose -f "${COMPOSE_FILE}" logs --tail=50 >&2 || true
   exit 1
 fi
 
