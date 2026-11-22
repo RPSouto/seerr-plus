@@ -219,6 +219,9 @@ interface FullPublicSettings extends PublicSettings {
   youtubeUrl: string;
   versionCheck: boolean;
   plexClientIdentifier: string;
+  seerrPlusMovieClubEnabled?: boolean;
+  seerrPlusRemovalVotesEnabled?: boolean;
+  seerrPlusPureBlackTheme?: boolean;
 }
 
 export interface NotificationAgentConfig {
@@ -374,6 +377,18 @@ export type JobId =
   | 'availability-sync'
   | 'process-blocklisted-tags';
 
+export interface SeerrPlusSettings {
+  movieClubEnabled: boolean;
+  movieClubAutoRequestWinner: boolean;
+  movieClubRadarrTag: string;
+  movieClubNotifyMembers: boolean;
+  removalVotesEnabled: boolean;
+  removalVoteQuorum: number;
+  removalVoteGracePeriodDays: number;
+  removalAutoUnmonitorRadarr: boolean;
+  pureBlackTheme: boolean;
+}
+
 export interface AllSettings {
   clientId: string;
   sessionSecret?: string;
@@ -390,6 +405,7 @@ export interface AllSettings {
   jobs: Record<JobId, JobSettings>;
   network: NetworkSettings;
   metadataSettings: MetadataSettings;
+  seerrplus: SeerrPlusSettings;
   migrations: string[];
 }
 
@@ -636,6 +652,17 @@ class Settings {
         },
         apiRequestTimeout: 10000,
       },
+      seerrplus: {
+        movieClubEnabled: true,
+        movieClubAutoRequestWinner: true,
+        movieClubRadarrTag: 'movie-club',
+        movieClubNotifyMembers: true,
+        removalVotesEnabled: true,
+        removalVoteQuorum: 3,
+        removalVoteGracePeriodDays: 7,
+        removalAutoUnmonitorRadarr: false,
+        pureBlackTheme: false,
+      },
       migrations: [],
     };
     if (initialSettings) {
@@ -745,7 +772,30 @@ class Settings {
       youtubeUrl: this.data.main.youtubeUrl,
       versionCheck: this.data.main.versionCheck,
       plexClientIdentifier: this.data.clientId,
+      seerrPlusMovieClubEnabled: this.seerrplus.movieClubEnabled,
+      seerrPlusRemovalVotesEnabled: this.seerrplus.removalVotesEnabled,
+      seerrPlusPureBlackTheme: this.seerrplus.pureBlackTheme,
     };
+  }
+
+  get seerrplus(): SeerrPlusSettings {
+    return (
+      this.data.seerrplus ?? {
+        movieClubEnabled: true,
+        movieClubAutoRequestWinner: true,
+        movieClubRadarrTag: 'movie-club',
+        movieClubNotifyMembers: true,
+        removalVotesEnabled: true,
+        removalVoteQuorum: 3,
+        removalVoteGracePeriodDays: 7,
+        removalAutoUnmonitorRadarr: false,
+        pureBlackTheme: false,
+      }
+    );
+  }
+
+  set seerrplus(data: SeerrPlusSettings) {
+    this.data.seerrplus = mergeSettings(this.seerrplus, data);
   }
 
   get notifications(): NotificationSettings {

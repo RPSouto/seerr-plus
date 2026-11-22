@@ -51,6 +51,9 @@ export interface PublicSettingsResponse {
   youtubeUrl: string;
   versionCheck: boolean;
   plexClientIdentifier: string;
+  seerrPlusMovieClubEnabled?: boolean;
+  seerrPlusRemovalVotesEnabled?: boolean;
+  seerrPlusPureBlackTheme?: boolean;
 }
 
 export interface CacheItem {

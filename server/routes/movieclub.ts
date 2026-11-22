@@ -1,7 +1,12 @@
 import TheMovieDb from '@server/api/themoviedb';
-import { MediaStatus, MediaType } from '@server/constants/media';
+import {
+  MediaRequestStatus,
+  MediaStatus,
+  MediaType,
+} from '@server/constants/media';
 import { getRepository } from '@server/datasource';
 import Media from '@server/entity/Media';
+import { MediaRequest } from '@server/entity/MediaRequest';
 import MovieClubCandidate from '@server/entity/MovieClubCandidate';
 import MovieClubCurator from '@server/entity/MovieClubCurator';
 import MovieClubSession, {
@@ -15,6 +20,8 @@ import type { MovieClubEmailMovie } from '@server/lib/seerrplus/movieClubNotific
 import { sendMovieClubEmail } from '@server/lib/seerrplus/movieClubNotifications';
 import { getMovieClubWeekKey } from '@server/lib/seerrplus/movieClubSuggestions';
 import { getMediaRequesters } from '@server/lib/seerrplus/requests';
+import { getSettings } from '@server/lib/settings';
+import logger from '@server/logger';
 import { isPgsql } from '@server/utils/dbType';
 import type { Request } from 'express';
 import { Router } from 'express';
@@ -1502,25 +1509,81 @@ export const resolveMovieClubSession = async (
     session.selectedAt = new Date();
     await repository.save(session);
     const selectedMovie = await movieDetails(leaders[0].media, locale);
-    await sendMovieClubEmail(
-      {
-        en: `Movie Club winner: ${selectedMovie.title}`,
-        pt: `Vencedor do Movie Club: ${selectedMovie.title}`,
-      },
-      {
-        en: `The votes are in. ${selectedMovie.title} is the Film of the Week with ${topVotes} votes. ${requesterText(selectedMovie)} Watch it on Plex, read the synopsis in Seerr+, and join the Movie Club discussion.`,
-        pt: `Os votos estão fechados. ${selectedMovie.title} é o Filme da Semana com ${topVotes} votos. ${requesterText(selectedMovie, true)} Vê no Plex, lê a sinopse no Seerr+ e junta-te à conversa do Movie Club.`,
-      },
-      undefined,
-      {
-        actionLabel: {
-          en: 'Open Film of the Week',
-          pt: 'Abrir Filme da Semana',
-        },
-        highlightMovie: toEmailMovie(selectedMovie, topVotes),
-        movies: [toEmailMovie(selectedMovie, topVotes)],
+
+    const settings = getSettings();
+
+    // Auto-request winning movie in Radarr if enabled
+    if (
+      settings.seerrplus.movieClubAutoRequestWinner &&
+      leaders[0].media?.tmdbId
+    ) {
+      try {
+        const userRepository = getRepository(User);
+        const adminUser = await userRepository.findOne({
+          where: {},
+          order: { id: 'ASC' },
+        });
+
+        if (adminUser) {
+          const mediaRepo = getRepository(Media);
+          const currentMedia = await mediaRepo.findOne({
+            where: { id: leaders[0].media.id },
+            relations: { requests: true },
+          });
+
+          const hasActiveRequest = currentMedia?.requests?.some(
+            (r) =>
+              r.status === MediaRequestStatus.APPROVED ||
+              r.status === MediaRequestStatus.PENDING ||
+              r.status === MediaRequestStatus.COMPLETED
+          );
+
+          if (!hasActiveRequest) {
+            await MediaRequest.request(
+              {
+                mediaId: leaders[0].media.tmdbId,
+                mediaType: MediaType.MOVIE,
+                tags: settings.seerrplus.movieClubRadarrTag
+                  ? [settings.seerrplus.movieClubRadarrTag]
+                  : undefined,
+              },
+              adminUser
+            );
+            logger.info(
+              `Auto-requested Movie Club winner '${selectedMovie.title}' in Radarr with tag '${settings.seerrplus.movieClubRadarrTag}'`,
+              { label: 'Seerr+', tmdbId: leaders[0].media.tmdbId }
+            );
+          }
+        }
+      } catch (reqErr) {
+        logger.warn(
+          `Failed to auto-request Movie Club winner: ${reqErr instanceof Error ? reqErr.message : String(reqErr)}`,
+          { label: 'Seerr+' }
+        );
       }
-    );
+    }
+
+    if (settings.seerrplus.movieClubNotifyMembers) {
+      await sendMovieClubEmail(
+        {
+          en: `Movie Club winner: ${selectedMovie.title}`,
+          pt: `Vencedor do Movie Club: ${selectedMovie.title}`,
+        },
+        {
+          en: `The votes are in. ${selectedMovie.title} is the Film of the Week with ${topVotes} votes. ${requesterText(selectedMovie)} Watch it on Plex, read the synopsis in Seerr+, and join the Movie Club discussion.`,
+          pt: `Os votos estão fechados. ${selectedMovie.title} é o Filme da Semana com ${topVotes} votos. ${requesterText(selectedMovie, true)} Vê no Plex, lê a sinopse no Seerr+ e junta-te à conversa do Movie Club.`,
+        },
+        undefined,
+        {
+          actionLabel: {
+            en: 'Open Film of the Week',
+            pt: 'Abrir Filme da Semana',
+          },
+          highlightMovie: toEmailMovie(selectedMovie, topVotes),
+          movies: [toEmailMovie(selectedMovie, topVotes)],
+        }
+      );
+    }
     return { tie: false, winner: selectedMovie };
   }
   const lowestVotes = Math.min(

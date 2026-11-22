@@ -36,10 +36,15 @@
 - **Consensus Voting:** Admins can launch an automatic community vote among interested users before deciding whether to purge media.
 - **Automated Deletion:** Approving a removal deletes the file from disk via Radarr/Sonarr and updates Seerr media records automatically.
 
-### 📊 Real-time Plex & Tautulli Stream Visibility
-- **Live Streams in Sidebar:** View active Plex stream counts, movie totals, and series statistics directly in the sidebar without triggering heavy library scans.
-- **Secure Stream Art Proxy:** Proxies current stream thumbnails through Seerr without exposing your Tautulli API key to client browsers.
-- **Mobile Stream Overlay:** Responsive, compact overlay for mobile users to check Plex activity on the go.
+### ⚙️ Dedicated Seerr+ Settings UI
+- **Full In-App Control:** Manage all Seerr+ features under `Settings -> Seerr+`.
+- **Movie Club Automation:** Enable/disable Movie Club, configure auto-requesting of winning movies in Radarr with custom tags (e.g. `movie-club`), and control notification broadcasts.
+- **Collaborative Removal Thresholds:** Configure minimum vote quorums, grace periods (in days), and auto-unmonitoring in Radarr/Sonarr.
+- **Pure Black (OLED) Theme:** Toggle true `#000000` dark mode optimized for OLED screens and power efficiency.
+
+### 🤖 Automated CI/CD & Upstream Sync
+- **GitHub Container Registry (GHCR):** Images are automatically built and published to `ghcr.io/rpsouto/seerr-plus` on every commit to `main`.
+- **Upstream Release Tracker:** Automated workflow monitors upstream `seerr-team/seerr` releases and alerts when new versions arrive.
 
 ---
 

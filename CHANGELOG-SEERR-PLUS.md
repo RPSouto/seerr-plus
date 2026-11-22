@@ -1,5 +1,13 @@
 # Seerr+ Changelog
 
+## seerr-plus-v1.8.460
+- Added dedicated Seerr+ settings UI in `Settings -> Seerr+` with interactive controls for Movie Club, Removal Votes, and Appearance.
+- Added automated Movie Club winner processing: auto-requests winning movie in Radarr with custom tag (`movie-club`) and notifies members.
+- Added Pure Black (OLED) true black `#000000` theme mode configurable in Seerr+ settings.
+- Added GitHub Actions for automated Docker builds & publishing to GitHub Container Registry (`ghcr.io/rpsouto/seerr-plus`).
+- Added GitHub Actions upstream sync tracker for automated monitoring of official Seerr upstream releases.
+- Modernized local deployment scripts (`fast-deploy.sh`) to operate directly on the official fork without overlays.
+
 ## seerr-plus-v1.8.455
 - Upstream merge of Seerr v3.5.2 (Node.js 22.23.5, SQLite3 v6, Next.js 16.4.2, credentials logging prevention, Jellyfin season filter fixes, SQLite table migration fixes, and scanner stability).
 - Fully preserved Seerr+ features: Movie Club (Film of the Week, voting, responsible curators, automated progression scheduler), Removal Requests & Voting, Interested Users, and Tautulli Plex Library & Stream Statistics.

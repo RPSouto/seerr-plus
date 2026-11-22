@@ -63,8 +63,14 @@ const Layout = ({ children }: LayoutProps) => {
     };
   }, []);
 
+  const isOled = currentSettings?.seerrPlusPureBlackTheme ?? false;
+
   return (
-    <div className="seerr-plus-theme flex h-full min-h-full min-w-0 bg-black">
+    <div
+      className={`seerr-plus-theme ${
+        isOled ? 'seerr-plus-oled' : ''
+      } flex h-full min-h-full min-w-0 bg-black`}
+    >
       <div className="pwa-only fixed inset-0 z-20 h-1 w-full border-gray-700 md:border-t" />
       <div className="absolute top-0 h-64 w-full bg-gradient-to-bl from-gray-900 to-black">
         <div className="relative inset-0 h-full w-full bg-gradient-to-t from-black to-transparent" />

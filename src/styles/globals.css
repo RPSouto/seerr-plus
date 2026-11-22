@@ -68,7 +68,8 @@
 .seerr-plus-theme [class*='from-indigo-'] {
   --tw-gradient-from: #171717 var(--tw-gradient-from-position) !important;
   --tw-gradient-to: rgb(23 23 23 / 0) var(--tw-gradient-to-position) !important;
-  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+  --tw-gradient-stops:
+    var(--tw-gradient-from), var(--tw-gradient-to) !important;
 }
 
 .seerr-plus-theme [class*='to-gray-900'],
@@ -92,6 +93,29 @@
 .seerr-plus-theme [class*='ring-indigo-'],
 .seerr-plus-theme [class*='focus:ring-indigo'] {
   --tw-ring-color: rgb(115 115 115 / 0.7) !important;
+}
+
+/* Pure Black (OLED) Theme */
+.seerr-plus-oled {
+  background-color: #000000 !important;
+}
+
+.seerr-plus-oled [class*='bg-gray-800'] {
+  background-color: #050505 !important;
+}
+
+.seerr-plus-oled [class*='bg-gray-700'] {
+  background-color: #0f0f0f !important;
+}
+
+.seerr-plus-oled [class*='border-gray-800'],
+.seerr-plus-oled [class*='border-gray-700'] {
+  border-color: #1c1c1c !important;
+}
+
+.seerr-plus-oled .sidebar {
+  background: #000000 !important;
+  border-right-color: #171717 !important;
 }
 
 @layer components {

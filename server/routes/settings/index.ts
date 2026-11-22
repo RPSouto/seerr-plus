@@ -883,6 +883,18 @@ settingsRoutes.post(
   }
 );
 
+settingsRoutes.get('/seerrplus', (_req, res) => {
+  const settings = getSettings();
+  return res.status(200).json(settings.seerrplus);
+});
+
+settingsRoutes.post('/seerrplus', async (req, res) => {
+  const settings = getSettings();
+  settings.seerrplus = merge(settings.seerrplus, req.body);
+  await settings.save();
+  return res.status(200).json(settings.seerrplus);
+});
+
 settingsRoutes.get('/about', async (req, res) => {
   const mediaRepository = getRepository(Media);
   const mediaRequestRepository = getRepository(MediaRequest);
