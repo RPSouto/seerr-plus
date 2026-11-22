@@ -325,6 +325,36 @@ components:
             forceMaxTtl:
               type: number
               example: -1
+    SeerrPlusSettings:
+      type: object
+      properties:
+        movieClubEnabled:
+          type: boolean
+          example: true
+        movieClubAutoRequestWinner:
+          type: boolean
+          example: true
+        movieClubRadarrTag:
+          type: string
+          example: movie-club
+        movieClubNotifyMembers:
+          type: boolean
+          example: true
+        removalVotesEnabled:
+          type: boolean
+          example: true
+        removalVoteQuorum:
+          type: number
+          example: 3
+        removalVoteGracePeriodDays:
+          type: number
+          example: 7
+        removalAutoUnmonitorRadarr:
+          type: boolean
+          example: false
+        pureBlackTheme:
+          type: boolean
+          example: false
     PlexLibrary:
       type: object
       properties:
@@ -2299,6 +2329,14 @@ paths:
                     example: 1.0.0
                   commitTag:
                     type: string
+                  seerrPlusVersion:
+                    type: string
+                    example: 1.8.460
+                  seerrPlusUpdateAvailable:
+                    type: boolean
+                  seerrPlusLatestVersion:
+                    type: string
+                    example: seerr-plus-v1.8.460
                   updateAvailable:
                     type: boolean
                   commitsBehind:
@@ -4100,6 +4138,39 @@ paths:
       responses:
         '204':
           description: All sliders reset to defaults
+  /settings/seerrplus:
+    get:
+      summary: Get Seerr+ settings
+      description: Returns Seerr+ settings in a JSON object.
+      tags:
+        - settings
+        - seerrplus
+      responses:
+        '200':
+          description: Returned Seerr+ settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeerrPlusSettings'
+    post:
+      summary: Update Seerr+ settings
+      description: Updates Seerr+ settings with the provided values.
+      tags:
+        - settings
+        - seerrplus
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SeerrPlusSettings'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeerrPlusSettings'
   /settings/about:
     get:
       summary: Get server stats
@@ -9198,6 +9269,35 @@ paths:
           description: Administrator permission required
         '404':
           description: Session or candidate not found
+  /seerrplus/settings:
+    get:
+      summary: Get Seerr+ settings
+      tags:
+        - seerrplus
+      responses:
+        '200':
+          description: Returned Seerr+ settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeerrPlusSettings'
+    post:
+      summary: Update Seerr+ settings
+      tags:
+        - seerrplus
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SeerrPlusSettings'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SeerrPlusSettings'
 security:
   - cookieAuth: []
   - apiKey: []

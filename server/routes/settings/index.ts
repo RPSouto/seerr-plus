@@ -890,7 +890,16 @@ settingsRoutes.get('/seerrplus', (_req, res) => {
 
 settingsRoutes.post('/seerrplus', async (req, res) => {
   const settings = getSettings();
-  settings.seerrplus = merge(settings.seerrplus, req.body);
+  const updateData = { ...req.body };
+  if (updateData.removalVoteQuorum !== undefined) {
+    updateData.removalVoteQuorum = Number(updateData.removalVoteQuorum);
+  }
+  if (updateData.removalVoteGracePeriodDays !== undefined) {
+    updateData.removalVoteGracePeriodDays = Number(
+      updateData.removalVoteGracePeriodDays
+    );
+  }
+  settings.seerrplus = merge(settings.seerrplus, updateData);
   await settings.save();
   return res.status(200).json(settings.seerrplus);
 });

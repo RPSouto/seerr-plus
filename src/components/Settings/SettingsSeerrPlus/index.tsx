@@ -114,7 +114,13 @@ const SettingsSeerrPlus = () => {
           validationSchema={SeerrPlusSchema}
           onSubmit={async (values) => {
             try {
-              await axios.post('/api/v1/settings/seerrplus', values);
+              await axios.post('/api/v1/settings/seerrplus', {
+                ...values,
+                removalVoteQuorum: Number(values.removalVoteQuorum),
+                removalVoteGracePeriodDays: Number(
+                  values.removalVoteGracePeriodDays
+                ),
+              });
               mutate('/api/v1/settings/public');
               revalidate();
               addToast(intl.formatMessage(messages.toastSettingsSuccess), {
