@@ -274,23 +274,41 @@ export class MediaRequestSubscriber implements EntitySubscriberInterface<MediaRe
         let radarrSettings = settings.radarr.find(
           (radarr) => radarr.isDefault && radarr.is4k === entity.is4k
         );
+        let useRequestOverrides = true;
 
         if (
           entity.serverId !== null &&
           entity.serverId >= 0 &&
           radarrSettings?.id !== entity.serverId
         ) {
-          radarrSettings = settings.radarr.find(
-            (radarr) => radarr.id === entity.serverId
+          const overrideServer = settings.radarr.find(
+            (radarr) =>
+              radarr.id === entity.serverId && radarr.is4k === entity.is4k
           );
-          logger.info(
-            `Request has an override server: ${radarrSettings?.name}`,
-            {
-              label: 'Media Request',
-              requestId: entity.id,
-              mediaId: entity.media.id,
-            }
-          );
+
+          if (overrideServer) {
+            radarrSettings = overrideServer;
+            logger.info(
+              `Request has an override server: ${radarrSettings.name}`,
+              {
+                label: 'Media Request',
+                requestId: entity.id,
+                mediaId: entity.media.id,
+              }
+            );
+          } else {
+            useRequestOverrides = false;
+            logger.warn(
+              `Request server ID ${entity.serverId} is not a configured ${
+                entity.is4k ? '4K' : 'non-4K'
+              } Radarr server, falling back to the default server`,
+              {
+                label: 'Media Request',
+                requestId: entity.id,
+                mediaId: entity.media.id,
+              }
+            );
+          }
         }
 
         if (!radarrSettings) {
@@ -314,6 +332,7 @@ export class MediaRequestSubscriber implements EntitySubscriberInterface<MediaRe
         let tags = radarrSettings.tags ? [...radarrSettings.tags] : [];
 
         if (
+          useRequestOverrides &&
           entity.rootFolder &&
           entity.rootFolder !== '' &&
           entity.rootFolder !== radarrSettings.activeDirectory
@@ -327,6 +346,7 @@ export class MediaRequestSubscriber implements EntitySubscriberInterface<MediaRe
         }
 
         if (
+          useRequestOverrides &&
           entity.profileId &&
           entity.profileId !== radarrSettings.activeProfileId
         ) {
@@ -341,7 +361,11 @@ export class MediaRequestSubscriber implements EntitySubscriberInterface<MediaRe
           );
         }
 
-        if (entity.tags && !isEqual(entity.tags, radarrSettings.tags)) {
+        if (
+          useRequestOverrides &&
+          entity.tags &&
+          !isEqual(entity.tags, radarrSettings.tags)
+        ) {
           tags = entity.tags;
           logger.info(`Request has override tags`, {
             label: 'Media Request',
@@ -573,23 +597,41 @@ export class MediaRequestSubscriber implements EntitySubscriberInterface<MediaRe
         let sonarrSettings = settings.sonarr.find(
           (sonarr) => sonarr.isDefault && sonarr.is4k === entity.is4k
         );
+        let useRequestOverrides = true;
 
         if (
           entity.serverId !== null &&
           entity.serverId >= 0 &&
           sonarrSettings?.id !== entity.serverId
         ) {
-          sonarrSettings = settings.sonarr.find(
-            (sonarr) => sonarr.id === entity.serverId
+          const overrideServer = settings.sonarr.find(
+            (sonarr) =>
+              sonarr.id === entity.serverId && sonarr.is4k === entity.is4k
           );
-          logger.info(
-            `Request has an override server: ${sonarrSettings?.name}`,
-            {
-              label: 'Media Request',
-              requestId: entity.id,
-              mediaId: entity.media.id,
-            }
-          );
+
+          if (overrideServer) {
+            sonarrSettings = overrideServer;
+            logger.info(
+              `Request has an override server: ${sonarrSettings.name}`,
+              {
+                label: 'Media Request',
+                requestId: entity.id,
+                mediaId: entity.media.id,
+              }
+            );
+          } else {
+            useRequestOverrides = false;
+            logger.warn(
+              `Request server ID ${entity.serverId} is not a configured ${
+                entity.is4k ? '4K' : 'non-4K'
+              } Sonarr server, falling back to the default server`,
+              {
+                label: 'Media Request',
+                requestId: entity.id,
+                mediaId: entity.media.id,
+              }
+            );
+          }
         }
 
         if (!sonarrSettings) {
@@ -683,6 +725,7 @@ export class MediaRequestSubscriber implements EntitySubscriberInterface<MediaRe
             : [];
 
         if (
+          useRequestOverrides &&
           entity.rootFolder &&
           entity.rootFolder !== '' &&
           entity.rootFolder !== rootFolder
@@ -695,7 +738,11 @@ export class MediaRequestSubscriber implements EntitySubscriberInterface<MediaRe
           });
         }
 
-        if (entity.profileId && entity.profileId !== qualityProfile) {
+        if (
+          useRequestOverrides &&
+          entity.profileId &&
+          entity.profileId !== qualityProfile
+        ) {
           qualityProfile = entity.profileId;
           logger.info(
             `Request has an override quality profile ID: ${qualityProfile}`,
@@ -708,6 +755,7 @@ export class MediaRequestSubscriber implements EntitySubscriberInterface<MediaRe
         }
 
         if (
+          useRequestOverrides &&
           entity.languageProfileId &&
           entity.languageProfileId !== languageProfile
         ) {
@@ -722,7 +770,7 @@ export class MediaRequestSubscriber implements EntitySubscriberInterface<MediaRe
           );
         }
 
-        if (entity.tags && !isEqual(entity.tags, tags)) {
+        if (useRequestOverrides && entity.tags && !isEqual(entity.tags, tags)) {
           tags = entity.tags;
           logger.info(`Request has override tags`, {
             label: 'Media Request',

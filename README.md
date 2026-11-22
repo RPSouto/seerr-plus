@@ -3,8 +3,8 @@
 # Seerr+ 🎬
 ### Enhanced Community Edition for Plex & Overseerr/Seerr
 
-[![Latest Release](https://img.shields.io/badge/Seerr+-v1.8.450-blue.svg?style=flat-square)](https://github.com/RPSouto/seerr-plus/releases)
-[![Upstream Base](https://img.shields.io/badge/Upstream%20Base-Seerr%20v3.5.1-success.svg?style=flat-square)](https://github.com/seerr-team/seerr/releases/tag/v3.5.1)
+[![Latest Release](https://img.shields.io/badge/Seerr+-v1.8.455-blue.svg?style=flat-square)](https://github.com/RPSouto/seerr-plus/releases)
+[![Upstream Base](https://img.shields.io/badge/Upstream%20Base-Seerr%20v3.5.2-success.svg?style=flat-square)](https://github.com/seerr-team/seerr/releases/tag/v3.5.2)
 [![Node.js](https://img.shields.io/badge/Node.js-22.x-green.svg?style=flat-square)](https://nodejs.org)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED?style=flat-square&logo=docker&logoColor=white)](#deployment)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
@@ -63,9 +63,9 @@ git clone https://github.com/RPSouto/seerr-plus.git
 cd seerr-plus
 
 sudo docker build --no-cache \
-  -t local/seerr-plus:3.5.1 \
+  -t local/seerr-plus:3.5.2 \
   -t local/seerr-plus:latest \
-  --build-arg COMMIT_TAG=seerr-plus-v1.8.450 \
+  --build-arg COMMIT_TAG=seerr-plus-v1.8.455 \
   .
 ```
 
@@ -112,9 +112,9 @@ cd ~/Docker/Seerr-Plus
 git pull origin main
 
 sudo docker build --no-cache \
-  -t local/seerr-plus:3.5.1 \
+  -t local/seerr-plus:3.5.2 \
   -t local/seerr-plus:latest \
-  --build-arg COMMIT_TAG=seerr-plus-v1.8.450 \
+  --build-arg COMMIT_TAG=seerr-plus-v1.8.455 \
   .
 
 cd ~/Docker/Seerr-Plus-Deploy

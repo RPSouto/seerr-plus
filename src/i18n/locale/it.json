@@ -1245,7 +1245,6 @@
   "components.Settings.SettingsMain.validationApplicationUrl": "Devi fornire un URL valido",
   "components.Settings.SettingsMain.validationApplicationUrlTrailingSlash": "L'URL non deve terminare con una barra \"/\" finale",
   "components.Settings.SettingsMain.validationUrl": "Devi fornire un URL valido",
-  "components.Settings.SettingsMain.validationUrlTrailingSlash": "La URL non può terminare con \"/\"",
   "components.Settings.SettingsMain.youtubeUrl": "ULR Youtube",
   "components.Settings.SettingsMain.youtubeUrlTip": "URL base per i video di YouTube se stai usando un'istanza self-hosted di YouTube.",
   "components.Settings.SettingsNetwork.apiRequestTimeout": "Richiesta API scaduta",

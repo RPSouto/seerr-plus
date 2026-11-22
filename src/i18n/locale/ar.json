@@ -1245,7 +1245,6 @@
   "components.Settings.SettingsMain.validationApplicationUrl": "يجب تقديم رابط صحيح",
   "components.Settings.SettingsMain.validationApplicationUrlTrailingSlash": "الرابط يجب لا أن ينتهي بعلامة سلاش",
   "components.Settings.SettingsMain.validationUrl": "يجب تقديم رابط صالح",
-  "components.Settings.SettingsMain.validationUrlTrailingSlash": "يجب ألا ينتهي الرابط بشرطة مائلة /",
   "components.Settings.SettingsMain.youtubeUrl": "رابط YouTube",
   "components.Settings.SettingsMain.youtubeUrlTip": "الرابط الجذري لمقاطع YouTube في حال استخدام نسخة مستضافة ذاتياً.",
   "components.Settings.SettingsNetwork.apiRequestTimeout": "مهلة طلب API",

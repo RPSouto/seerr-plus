@@ -21,10 +21,10 @@ import ManageSlideOver from '@app/components/ManageSlideOver';
 import MediaSlider from '@app/components/MediaSlider';
 import PersonCard from '@app/components/PersonCard';
 import RequestButton from '@app/components/RequestButton';
-import RequestInterestUsers from '@app/components/SeerrPlus/RequestInterestUsers';
-import RemovalRequestButton from '@app/components/SeerrPlus/RemovalRequestButton';
 import MovieClubSuggestButton from '@app/components/SeerrPlus/MovieClub/SuggestButton';
 import PublicRequestersBadge from '@app/components/SeerrPlus/PublicRequestersBadge';
+import RemovalRequestButton from '@app/components/SeerrPlus/RemovalRequestButton';
+import RequestInterestUsers from '@app/components/SeerrPlus/RequestInterestUsers';
 import Slider from '@app/components/Slider';
 import StatusBadge from '@app/components/StatusBadge';
 import useDeepLinks from '@app/hooks/useDeepLinks';
@@ -36,7 +36,7 @@ import globalMessages from '@app/i18n/globalMessages';
 import ErrorPage from '@app/pages/_error';
 import { sortCrewPriority } from '@app/utils/creditHelpers';
 import defineMessages from '@app/utils/defineMessages';
-import { refreshIntervalHelper } from '@app/utils/refreshIntervalHelper';
+import { mediaRefreshInterval } from '@app/utils/refreshIntervalHelper';
 import {
   ArrowRightCircleIcon,
   CloudIcon,
@@ -69,7 +69,14 @@ import 'country-flag-icons/3x2/flags.css';
 import { uniqBy } from 'lodash';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useIntl } from 'react-intl';
 import useSWR from 'swr';
 
@@ -148,6 +155,7 @@ const MovieDetails = ({ movie }: MovieDetailsProps) => {
     useState<boolean>(false);
   const [showBlocklistModal, setShowBlocklistModal] = useState(false);
   const { addToast } = useToasts();
+  const sawDownload = useRef(false);
 
   const {
     data,
@@ -155,13 +163,8 @@ const MovieDetails = ({ movie }: MovieDetailsProps) => {
     mutate: revalidate,
   } = useSWR<MovieDetailsType>(`/api/v1/movie/${router.query.movieId}`, {
     fallbackData: movie,
-    refreshInterval: refreshIntervalHelper(
-      {
-        downloadStatus: movie?.mediaInfo?.downloadStatus,
-        downloadStatus4k: movie?.mediaInfo?.downloadStatus4k,
-      },
-      15000
-    ),
+    refreshInterval: (latest) =>
+      mediaRefreshInterval(latest?.mediaInfo, sawDownload, 15000),
   });
 
   const { data: ratingData } = useSWR<RatingResponse>(
@@ -181,10 +184,14 @@ const MovieDetails = ({ movie }: MovieDetailsProps) => {
   useEffect(() => {
     if (router.query.manage === '1') {
       setShowManager(true);
-      router.replace({
-        pathname: router.pathname,
-        query: { movieId: router.query.movieId },
-      });
+      router.replace(
+        {
+          pathname: router.pathname,
+          query: { movieId: router.query.movieId },
+        },
+        undefined,
+        { shallow: true }
+      );
     }
   }, [router, router.query.manage]);
 
@@ -496,10 +503,14 @@ const MovieDetails = ({ movie }: MovieDetailsProps) => {
         mediaType="movie"
         onClose={() => {
           setShowManager(false);
-          router.replace({
-            pathname: router.pathname,
-            query: { movieId: router.query.movieId },
-          });
+          router.replace(
+            {
+              pathname: router.pathname,
+              query: { movieId: router.query.movieId },
+            },
+            undefined,
+            { shallow: true }
+          );
         }}
         revalidate={() => revalidate()}
         show={showManager}
@@ -669,92 +680,94 @@ const MovieDetails = ({ movie }: MovieDetailsProps) => {
             onUpdate={() => revalidate()}
           />
           <div className="flex w-full items-center justify-center sm:w-auto sm:justify-start">
-          <MovieClubSuggestButton
-            mediaId={data.mediaInfo?.id}
-            available={
-              data.mediaInfo?.status === MediaStatus.AVAILABLE ||
-              data.mediaInfo?.status4k === MediaStatus.AVAILABLE
-            }
-          />
-          <RemovalRequestButton
-            mediaId={data.mediaInfo?.id}
-            mediaTitle={data.title}
-            available={data.mediaInfo?.status === MediaStatus.AVAILABLE}
-            available4k={data.mediaInfo?.status4k === MediaStatus.AVAILABLE}
-            managed={
-              data.mediaInfo?.status !== MediaStatus.UNKNOWN &&
-              data.mediaInfo?.status !== MediaStatus.DELETED
-            }
-            managed4k={
-              data.mediaInfo?.status4k !== MediaStatus.UNKNOWN &&
-              data.mediaInfo?.status4k !== MediaStatus.DELETED
-            }
-          />
-          {(data.mediaInfo?.status === MediaStatus.AVAILABLE ||
-            (settings.currentSettings.movie4kEnabled &&
+            <MovieClubSuggestButton
+              mediaId={data.mediaInfo?.id}
+              available={
+                data.mediaInfo?.status === MediaStatus.AVAILABLE ||
+                data.mediaInfo?.status4k === MediaStatus.AVAILABLE
+              }
+            />
+            <RemovalRequestButton
+              mediaId={data.mediaInfo?.id}
+              mediaTitle={data.title}
+              available={data.mediaInfo?.status === MediaStatus.AVAILABLE}
+              available4k={data.mediaInfo?.status4k === MediaStatus.AVAILABLE}
+              managed={
+                data.mediaInfo?.status !== MediaStatus.UNKNOWN &&
+                data.mediaInfo?.status !== MediaStatus.DELETED
+              }
+              managed4k={
+                data.mediaInfo?.status4k !== MediaStatus.UNKNOWN &&
+                data.mediaInfo?.status4k !== MediaStatus.DELETED
+              }
+            />
+            {(data.mediaInfo?.status === MediaStatus.AVAILABLE ||
+              (settings.currentSettings.movie4kEnabled &&
+                hasPermission(
+                  [Permission.REQUEST_4K, Permission.REQUEST_4K_MOVIE],
+                  {
+                    type: 'or',
+                  }
+                ) &&
+                data.mediaInfo?.status4k === MediaStatus.AVAILABLE)) &&
               hasPermission(
-                [Permission.REQUEST_4K, Permission.REQUEST_4K_MOVIE],
+                [Permission.CREATE_ISSUES, Permission.MANAGE_ISSUES],
                 {
                   type: 'or',
                 }
-              ) &&
-              data.mediaInfo?.status4k === MediaStatus.AVAILABLE)) &&
-            hasPermission(
-              [Permission.CREATE_ISSUES, Permission.MANAGE_ISSUES],
-              {
-                type: 'or',
-              }
-            ) && (
-              <Tooltip content={intl.formatMessage(messages.reportissue)}>
-                <Button
-                  buttonType="warning"
-                  onClick={() => setShowIssueModal(true)}
-                  className="ml-2 first:ml-0"
-                >
-                  <ExclamationTriangleIcon />
-                </Button>
-              </Tooltip>
-            )}
-          {hasPermission(Permission.MANAGE_REQUESTS) &&
-            data.mediaInfo &&
-            (data.mediaInfo.jellyfinMediaId ||
-              data.mediaInfo.jellyfinMediaId4k ||
-              data.mediaInfo.status !== MediaStatus.UNKNOWN ||
-              data.mediaInfo.status4k !== MediaStatus.UNKNOWN) && (
-              <Tooltip content={intl.formatMessage(messages.managemovie)}>
-                <Button
-                  buttonType="ghost"
-                  onClick={() => setShowManager(true)}
-                  className="relative ml-2 first:ml-0"
-                >
-                  <CogIcon className="!mr-0" />
-                  {hasPermission(
-                    [Permission.MANAGE_ISSUES, Permission.VIEW_ISSUES],
-                    {
-                      type: 'or',
-                    }
-                  ) &&
-                    (
-                      data.mediaInfo?.issues.filter(
-                        (issue) => issue.status === IssueStatus.OPEN
-                      ) ?? []
-                    ).length > 0 && (
-                      <>
-                        <div className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-red-600" />
-                        <div className="absolute -right-1 -top-1 h-3 w-3 animate-ping rounded-full bg-red-600" />
-                      </>
-                    )}
-                </Button>
-              </Tooltip>
-            )}
+              ) && (
+                <Tooltip content={intl.formatMessage(messages.reportissue)}>
+                  <Button
+                    buttonType="warning"
+                    onClick={() => setShowIssueModal(true)}
+                    className="ml-2 first:ml-0"
+                  >
+                    <ExclamationTriangleIcon />
+                  </Button>
+                </Tooltip>
+              )}
+            {hasPermission(Permission.MANAGE_REQUESTS) &&
+              data.mediaInfo &&
+              (data.mediaInfo.jellyfinMediaId ||
+                data.mediaInfo.jellyfinMediaId4k ||
+                data.mediaInfo.status !== MediaStatus.UNKNOWN ||
+                data.mediaInfo.status4k !== MediaStatus.UNKNOWN) && (
+                <Tooltip content={intl.formatMessage(messages.managemovie)}>
+                  <Button
+                    buttonType="ghost"
+                    onClick={() => setShowManager(true)}
+                    className="relative ml-2 first:ml-0"
+                  >
+                    <CogIcon className="!mr-0" />
+                    {hasPermission(
+                      [Permission.MANAGE_ISSUES, Permission.VIEW_ISSUES],
+                      {
+                        type: 'or',
+                      }
+                    ) &&
+                      (
+                        data.mediaInfo?.issues.filter(
+                          (issue) => issue.status === IssueStatus.OPEN
+                        ) ?? []
+                      ).length > 0 && (
+                        <>
+                          <div className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-red-600" />
+                          <div className="absolute -right-1 -top-1 h-3 w-3 animate-ping rounded-full bg-red-600" />
+                        </>
+                      )}
+                  </Button>
+                </Tooltip>
+              )}
           </div>
           <RequestInterestUsers
-            requestId={data.mediaInfo?.requests.find(
-              (request) =>
-                !request.is4k &&
-                (request.status === MediaRequestStatus.PENDING ||
-                  request.status === MediaRequestStatus.APPROVED)
-            )?.id}
+            requestId={
+              data.mediaInfo?.requests.find(
+                (request) =>
+                  !request.is4k &&
+                  (request.status === MediaRequestStatus.PENDING ||
+                    request.status === MediaRequestStatus.APPROVED)
+              )?.id
+            }
           />
         </div>
       </div>

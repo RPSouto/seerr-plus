@@ -1,5 +1,9 @@
 # Seerr+ Changelog
 
+## seerr-plus-v1.8.455
+- Upstream merge of Seerr v3.5.2 (Node.js 22.23.5, SQLite3 v6, Next.js 16.4.2, credentials logging prevention, Jellyfin season filter fixes, SQLite table migration fixes, and scanner stability).
+- Fully preserved Seerr+ features: Movie Club (Film of the Week, voting, responsible curators, automated progression scheduler), Removal Requests & Voting, Interested Users, and Tautulli Plex Library & Stream Statistics.
+
 ## seerr-plus-v1.8.450
 - Upstream merge of Seerr v3.5.1 (incorporating v3.5.0 and v3.5.1 security patches, Headless UI 2.x, Node 22 upgrade, and library sync improvements).
 - Fully preserved Seerr+ features: Movie Club (film of the week, voting, suggestions, automated scheduler), Removal Votes & Issues, Interested Users, and Tautulli Plex Stream Statistics.

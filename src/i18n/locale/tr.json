@@ -1245,7 +1245,6 @@
   "components.Settings.SettingsMain.validationApplicationUrl": "Geçerli bir URL girmelisiniz",
   "components.Settings.SettingsMain.validationApplicationUrlTrailingSlash": "URL eğik çizgi ile bitmemelidir",
   "components.Settings.SettingsMain.validationUrl": "Geçerli bir URL girmelisiniz",
-  "components.Settings.SettingsMain.validationUrlTrailingSlash": "URL eğik çizgi ile bitmemelidir",
   "components.Settings.SettingsMain.youtubeUrl": "YouTube URL",
   "components.Settings.SettingsMain.youtubeUrlTip": "Kendi barındırdığınız bir YouTube örneği kullanılıyorsa YouTube videoları için temel URL.",
   "components.Settings.SettingsNetwork.apiRequestTimeout": "API İstek Zaman Aşımı",

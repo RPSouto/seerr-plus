@@ -596,6 +596,7 @@
   "components.RequestModal.cancel": "Cancelar Petición",
   "components.RequestModal.edit": "Editar Solicitud",
   "components.RequestModal.errorediting": "Algo salió mal al editar la solicitud.",
+  "components.RequestModal.noSeasonsAvailable": "Todas las temporadas seleccionadas ya han sido pedidas o ya están disponibles.",
   "components.RequestModal.numberofepisodes": "# de Episodios",
   "components.RequestModal.pending4krequest": "Solicitud 4K Pendiente",
   "components.RequestModal.pendingapproval": "Tu solicitud está pendiente de aprobación.",
