@@ -16,13 +16,11 @@ import {
   UsersIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline';
-import type { StatusResponse } from '@server/interfaces/api/settingsInterfaces';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { Fragment, useEffect, useRef } from 'react';
 import { useIntl } from 'react-intl';
-import useSWR from 'swr';
 
 export const menuMessages = defineMessages('components.Layout.Sidebar', {
   dashboard: 'Discover',
@@ -129,10 +127,6 @@ const Sidebar = ({
   const router = useRouter();
   const intl = useIntl();
   const { hasPermission } = useUser();
-  const { data: status } = useSWR<StatusResponse>('/api/v1/status');
-  const plusVersion = status?.seerrPlusVersion
-    ? status.seerrPlusVersion.replace('seerr-plus-', '')
-    : 'v1.8.460';
   useClickOutside(navRef, () => setClosed());
 
   useEffect(() => {
@@ -197,27 +191,7 @@ const Sidebar = ({
                         <Link href="/" className="relative block h-24 w-64">
                           <Image src="/logo_full.svg" alt="Logo" fill />
                         </Link>
-                        <div className="mt-1 flex items-center gap-1.5">
-                          <span className="seerr-plus-brand">Plus</span>
-                          <a
-                            href="https://github.com/RPSouto/seerr-plus/releases"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center rounded border border-gray-700 bg-gray-900/80 px-1.5 py-0.5 font-mono text-[10px] text-gray-400 transition hover:border-gray-500 hover:text-white"
-                            title="Seerr+ Release Notes"
-                          >
-                            {plusVersion}
-                          </a>
-                          {status?.seerrPlusUpdateAvailable && (
-                            <span
-                              className="relative flex h-2 w-2"
-                              title="Seerr+ Update Available"
-                            >
-                              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-yellow-400 opacity-75" />
-                              <span className="relative inline-flex h-2 w-2 rounded-full bg-yellow-500" />
-                            </span>
-                          )}
-                        </div>
+                        <span className="seerr-plus-brand">Plus</span>
                       </span>
                     </div>
                     <nav className="mt-10 flex-1 space-y-4 px-4">
@@ -287,27 +261,7 @@ const Sidebar = ({
                       loading="eager"
                     />
                   </Link>
-                  <div className="mt-1 flex items-center gap-1.5">
-                    <span className="seerr-plus-brand">Plus</span>
-                    <a
-                      href="https://github.com/RPSouto/seerr-plus/releases"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center rounded border border-gray-700 bg-gray-900/80 px-1.5 py-0.5 font-mono text-[10px] text-gray-400 transition hover:border-gray-500 hover:text-white"
-                      title="Seerr+ Release Notes"
-                    >
-                      {plusVersion}
-                    </a>
-                    {status?.seerrPlusUpdateAvailable && (
-                      <span
-                        className="relative flex h-2 w-2"
-                        title="Seerr+ Update Available"
-                      >
-                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-yellow-400 opacity-75" />
-                        <span className="relative inline-flex h-2 w-2 rounded-full bg-yellow-500" />
-                      </span>
-                    )}
-                  </div>
+                  <span className="seerr-plus-brand">Plus</span>
                 </span>
               </div>
               <nav className="mt-8 flex-1 space-y-4 px-4">
