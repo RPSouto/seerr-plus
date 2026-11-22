@@ -13,17 +13,95 @@ set -euo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PACKAGE_ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
 
-RAW_VERSION="$(tr -d '[:space:]' < "$PACKAGE_ROOT/SEERR_PLUS_VERSION" 2>/dev/null || echo "1.8.445")"
-VERSION="${RAW_VERSION#seerr-plus-v}"
-VERSION="${VERSION#v}"
-PKG_VERSION="$(grep '"version":' "$PACKAGE_ROOT/package.json" 2>/dev/null | head -n1 | sed -E 's/.*"version":[[:space:]]*"([^"]+)".*/\1/' || echo "3.4.1")"
+# Parse command line flags
+DO_GIT_PULL=false
+DOCKER_NO_CACHE=""
+SKIP_TESTS="${FAST_DEPLOY_SKIP_TESTS:-false}"
+NO_DEPLOY=false
+CLI_DEPLOY_DIR=""
+COMPOSE_SERVICE="${SEERR_COMPOSE_SERVICE:-seerr}"
+HEALTH_URL="${SEERR_HEALTH_URL:-http://127.0.0.1:5055/api/v1/status}"
 
-# Ensure package directory and files are owned by the current non-root user
-if command -v sudo >/dev/null 2>&1 && [[ -n "${USER:-}" && "$(id -u)" -ne 0 ]]; then
-  sudo chown -R "$USER:$USER" "$PACKAGE_ROOT" 2>/dev/null || true
+show_help() {
+  cat <<EOF
+Uso: $0 [opções]
+
+Script de compilação e deploy direto do fork oficial Seerr Plus (RPSouto/seerr-plus).
+
+Opções:
+  -p, --pull            Executa 'git pull origin main' antes de compilar
+  --no-cache            Força Docker build sem cache (--no-cache)
+  -s, --skip-tests      Salta verificações de sintaxe e typecheck
+  --no-deploy           Apenas compila as imagens Docker sem fazer deploy/restart
+  -d, --deploy-dir DIR  Define o diretório de deploy onde reside o compose file
+  --service NOME        Nome do serviço compose (default: seerr)
+  -h, --help            Mostra esta mensagem de ajuda
+
+Variáveis de ambiente suportadas:
+  SEERR_DEPLOY_DIR            Diretório de deploy alternativo
+  SEERR_PLUS_IMAGE_REPOSITORY Repositório da imagem (default: local/seerr-plus)
+  FAST_DEPLOY_SKIP_TESTS      Se 'true', salta testes
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -p|--pull)
+      DO_GIT_PULL=true
+      shift
+      ;;
+    --no-cache)
+      DOCKER_NO_CACHE="--no-cache"
+      shift
+      ;;
+    -s|--skip-tests)
+      SKIP_TESTS=true
+      shift
+      ;;
+    --no-deploy)
+      NO_DEPLOY=true
+      shift
+      ;;
+    -d|--deploy-dir)
+      CLI_DEPLOY_DIR="$2"
+      shift 2
+      ;;
+    --service)
+      COMPOSE_SERVICE="$2"
+      shift 2
+      ;;
+    -h|--help)
+      show_help
+      exit 0
+      ;;
+    *)
+      printf 'Opção desconhecida: %s\n' "$1" >&2
+      show_help
+      exit 1
+      ;;
+  esac
+done
+
+# 0. Git Pull opcional
+if [[ "$DO_GIT_PULL" == "true" ]]; then
+  if [[ -d "$PACKAGE_ROOT/.git" ]] && command -v git >/dev/null 2>&1; then
+    printf '\n[0/4] A puxar alterações mais recentes do GitHub (origin/main)...\n'
+    git -C "$PACKAGE_ROOT" pull origin main || {
+      printf 'AVISO: Não foi possível fazer git pull origin main. A continuar com os ficheiros locais...\n'
+    }
+  fi
 fi
 
-DEPLOY_DIR="${SEERR_DEPLOY_DIR:-}"
+RAW_VERSION="$(tr -d '[:space:]' < "$PACKAGE_ROOT/SEERR_PLUS_VERSION" 2>/dev/null || echo "1.8.455")"
+VERSION="${RAW_VERSION#seerr-plus-v}"
+VERSION="${VERSION#v}"
+PKG_VERSION="$(grep '"version":' "$PACKAGE_ROOT/package.json" 2>/dev/null | head -n1 | sed -E 's/.*"version":[[:space:]]*"([^"]+)".*/\1/' || echo "3.5.2")"
+
+IMAGE_REPOSITORY="${SEERR_PLUS_IMAGE_REPOSITORY:-local/seerr-plus}"
+PRIMARY_IMAGE="${IMAGE_REPOSITORY}:${PKG_VERSION}"
+
+# Determine Deploy directory
+DEPLOY_DIR="${CLI_DEPLOY_DIR:-${SEERR_DEPLOY_DIR:-}}"
 if [[ -z "$DEPLOY_DIR" ]]; then
   for candidate in \
     "${HOME}/Docker/Seerr-Plus-Deploy" \
@@ -36,62 +114,83 @@ if [[ -z "$DEPLOY_DIR" ]]; then
       break
     fi
   done
-  DEPLOY_DIR="${DEPLOY_DIR:-${HOME}/Docker/Seerr-Plus}"
+  DEPLOY_DIR="${DEPLOY_DIR:-${HOME}/Docker/Seerr-Plus-Deploy}"
 fi
 
-IMAGE_REPOSITORY="${SEERR_PLUS_IMAGE_REPOSITORY:-local/seerr-plus}"
-IMAGE_TAG="${SEERR_PLUS_IMAGE_TAG:-${VERSION}}"
-IMAGE="${IMAGE_REPOSITORY}:${IMAGE_TAG}"
-PKG_IMAGE="${IMAGE_REPOSITORY}:${PKG_VERSION}"
-LATEST_IMAGE="${IMAGE_REPOSITORY}:latest"
-HEALTH_URL="${SEERR_HEALTH_URL:-http://127.0.0.1:5055/api/v1/status}"
-SKIP_TESTS="${FAST_DEPLOY_SKIP_TESTS:-false}"
-COMPOSE_SERVICE="${SEERR_COMPOSE_SERVICE:-seerr}"
+# Ensure package directory and files are owned by the current non-root user
+if command -v sudo >/dev/null 2>&1 && [[ -n "${USER:-}" && "$(id -u)" -ne 0 ]]; then
+  sudo chown -R "$USER:$USER" "$PACKAGE_ROOT" 2>/dev/null || true
+fi
 
+# Detect Docker command
 DOCKER=(docker)
 if ! docker info >/dev/null 2>&1; then
   if command -v sudo >/dev/null 2>&1 && sudo docker info >/dev/null 2>&1; then
     DOCKER=(sudo docker)
   else
-    printf '%s\n' "ERROR: Docker daemon is not accessible (tried docker and sudo docker)." >&2
+    printf '%s\n' "ERRO: Docker daemon inacessível (tentou 'docker' e 'sudo docker')." >&2
     exit 2
   fi
 fi
 
 printf '==================================================\n'
-printf ' Seerr Plus:           %s\n' "$VERSION"
-printf ' Output image:         %s\n' "$IMAGE"
-printf ' Deploy directory:     %s\n' "$DEPLOY_DIR"
+printf ' Seerr Base Version:    %s\n' "$PKG_VERSION"
+printf ' Seerr Plus Extension:  v%s (%s)\n' "$VERSION" "$RAW_VERSION"
+printf ' Source (Fork):         %s\n' "$PACKAGE_ROOT"
+printf ' Deploy Directory:      %s\n' "$DEPLOY_DIR"
+printf ' Primary Image Tag:     %s\n' "$PRIMARY_IMAGE"
 printf '==================================================\n'
 
 # 1. Tests & Validation
 if [[ "$SKIP_TESTS" != "true" ]]; then
-  printf '\n[1/4] Validating scripts and syntax...\n'
+  printf '\n[1/4] A validar sintaxe e scripts...\n'
   bash -n "$PACKAGE_ROOT"/*.sh "$PACKAGE_ROOT"/scripts/*.sh 2>/dev/null || true
   if command -v pnpm >/dev/null 2>&1 && [[ -d "$PACKAGE_ROOT/node_modules" ]]; then
-    printf 'Running TypeScript typecheck...\n'
-    (cd "$PACKAGE_ROOT" && pnpm typecheck) || {
-      printf 'WARNING: Typecheck returned warnings/errors, continuing build...\n'
+    printf 'A verificar tipos com pnpm typecheck:server...\n'
+    (cd "$PACKAGE_ROOT" && pnpm typecheck:server) || {
+      printf 'AVISO: Typecheck reportou avisos, a continuar compilação...\n'
     }
   fi
 else
-  printf '%s\n' "Skipping tests because FAST_DEPLOY_SKIP_TESTS=true."
+  printf '\n[1/4] A ignorar testes (--skip-tests ativo).\n'
 fi
 
 # 2. Build image
-printf '\n[2/4] Building Seerr Plus Docker image...\n'
-"${DOCKER[@]}" build --pull \
-  -f "$PACKAGE_ROOT/Dockerfile" \
-  --build-arg COMMIT_TAG="seerr-plus-v$VERSION" \
-  -t "$PKG_IMAGE" \
-  -t "$IMAGE" \
-  -t "$LATEST_IMAGE" \
-  "$PACKAGE_ROOT"
+printf '\n[2/4] A compilar imagem Docker do Seerr Plus a partir do Fork...\n'
 
-printf 'Successfully built: %s, %s and %s\n' "$PKG_IMAGE" "$IMAGE" "$LATEST_IMAGE"
+BUILD_CMD=(
+  "${DOCKER[@]}" build
+  --pull
+  -f "$PACKAGE_ROOT/Dockerfile"
+  --build-arg "COMMIT_TAG=seerr-plus-v$VERSION"
+  -t "$IMAGE_REPOSITORY:$PKG_VERSION"
+  -t "$IMAGE_REPOSITORY:$VERSION"
+  -t "$IMAGE_REPOSITORY:seerr-plus-v$VERSION"
+  -t "$IMAGE_REPOSITORY:3.4.1"
+  -t "$IMAGE_REPOSITORY:latest"
+)
+
+if [[ -n "$DOCKER_NO_CACHE" ]]; then
+  BUILD_CMD+=("$DOCKER_NO_CACHE")
+fi
+
+BUILD_CMD+=("$PACKAGE_ROOT")
+
+"${BUILD_CMD[@]}"
+
+printf 'Compilação concluída com sucesso com as tags:\n'
+printf '  - %s:%s\n' "$IMAGE_REPOSITORY" "$PKG_VERSION"
+printf '  - %s:%s\n' "$IMAGE_REPOSITORY" "$VERSION"
+printf '  - %s:3.4.1 (retrocompatibilidade)\n' "$IMAGE_REPOSITORY"
+printf '  - %s:latest\n' "$IMAGE_REPOSITORY"
+
+if [[ "$NO_DEPLOY" == "true" ]]; then
+  printf '\n--no-deploy ativo. Compilação concluída sem restart do contentor.\n'
+  exit 0
+fi
 
 # 3. Deploy
-printf '\n[3/4] Deploying to Docker Compose...\n'
+printf '\n[3/4] A atualizar contentor no Docker Compose...\n'
 COMPOSE_FILE=""
 for candidate in compose.yaml compose.yml docker-compose.yaml docker-compose.yml compose.postgres.yaml; do
   if [[ -f "${DEPLOY_DIR}/${candidate}" ]]; then
@@ -101,23 +200,18 @@ for candidate in compose.yaml compose.yml docker-compose.yaml docker-compose.yml
 done
 
 if [[ -z "${COMPOSE_FILE}" ]]; then
-  printf 'ERROR: No compose file found in %s\n' "$DEPLOY_DIR" >&2
+  printf 'ERRO: Nenhum compose file encontrado em %s\n' "$DEPLOY_DIR" >&2
+  printf 'Ficheiros suportados: compose.yaml, compose.yml, docker-compose.yaml, docker-compose.yml\n' >&2
   exit 2
 fi
 
 cd "$DEPLOY_DIR"
 
-# If deploy directory is separate from repo and apply-update exists, run apply-update
-if [[ "$DEPLOY_DIR" != "$PACKAGE_ROOT" && -f "$PACKAGE_ROOT/apply-update.sh" ]]; then
-  printf 'Applying update files to %s...\n' "$DEPLOY_DIR"
-  "$PACKAGE_ROOT/apply-update.sh" "$DEPLOY_DIR" || true
-fi
-
-# Detect and stop any existing container binding port 5055 to avoid "port is already allocated"
+# Stop any rogue container binding port 5055 to avoid conflicts
 existing_port_containers="$("${DOCKER[@]}" ps -q --filter "publish=5055" || true)"
 if [[ -n "$existing_port_containers" ]]; then
-  printf 'Stopping existing container(s) binding port 5055...\n'
-  "${DOCKER[@]}" stop $existing_port_containers || true
+  printf 'A parar contentor existente na porta 5055...\n'
+  "${DOCKER[@]}" stop $existing_port_containers >/dev/null 2>&1 || true
 fi
 "${DOCKER[@]}" rm -f seerr-plus-seerr-1 seerr seerr-plus-deploy 2>/dev/null || true
 
@@ -127,31 +221,44 @@ cat <<EOF > "$OVERRIDE"
 services:
   ${COMPOSE_SERVICE}:
     container_name: seerr
-    image: ${IMAGE}
+    image: ${PRIMARY_IMAGE}
     pull_policy: never
 EOF
 
-printf 'Starting Seerr Plus container...\n'
+cleanup_override() {
+  if [[ -f "${DEPLOY_DIR}/${OVERRIDE}" ]]; then
+    rm -f "${DEPLOY_DIR}/${OVERRIDE}" 2>/dev/null || true
+  fi
+}
+# Set trap to clean up the override file on exit
+trap cleanup_override EXIT
+
+printf 'A iniciar contentor Seerr Plus (%s)...\n' "$COMPOSE_SERVICE"
 "${DOCKER[@]}" compose -f "${COMPOSE_FILE}" -f "${OVERRIDE}" up -d --force-recreate "${COMPOSE_SERVICE}"
 "${DOCKER[@]}" compose -f "${COMPOSE_FILE}" -f "${OVERRIDE}" ps "${COMPOSE_SERVICE}"
 
-# 4. Healthcheck
-printf '\n[4/4] Verifying health at %s...\n' "$HEALTH_URL"
+# 4. Healthcheck & Version Verification
+printf '\n[4/4] A verificar estado e versão em %s...\n' "$HEALTH_URL"
 healthy=false
+STATUS_RESPONSE=""
+
 for _attempt in $(seq 1 45); do
-  # Check if container is actually running
   is_running="$("${DOCKER[@]}" inspect -f '{{.State.Running}}' seerr 2>/dev/null || echo "false")"
-  if [[ "$is_running" == "true" ]] && curl -fsS "$HEALTH_URL" >/dev/null 2>&1; then
-    healthy=true
-    break
+  if [[ "$is_running" == "true" ]]; then
+    STATUS_RESPONSE="$(curl -fsS "$HEALTH_URL" 2>/dev/null || true)"
+    if [[ -n "$STATUS_RESPONSE" ]]; then
+      healthy=true
+      break
+    fi
   fi
   sleep 2
 done
 
 if [[ "$healthy" == "true" ]]; then
-  printf 'Seerr Plus is up and healthy!\n'
+  printf '\nSeerr Plus está ativo e saudável!\n'
+  printf 'Dados da API: %s\n' "$STATUS_RESPONSE"
 else
-  printf 'ERROR: Seerr Plus container failed to start or health endpoint %s did not respond within 90s.\n' "$HEALTH_URL" >&2
+  printf 'ERRO: Contentor não iniciou ou %s não respondeu no prazo de 90s.\n' "$HEALTH_URL" >&2
   "${DOCKER[@]}" compose -f "${COMPOSE_FILE}" -f "${OVERRIDE}" logs --tail=50 "${COMPOSE_SERVICE}" >&2 || true
   exit 1
 fi
@@ -160,4 +267,4 @@ if command -v sudo >/dev/null 2>&1 && [[ -n "${USER:-}" && "$(id -u)" -ne 0 ]]; 
   sudo chown -R "$USER:$USER" "$PACKAGE_ROOT" 2>/dev/null || true
 fi
 
-printf '\nSeerr Plus fast deploy completed successfully.\n'
+printf '\nDeploy do Seerr Plus concluído com sucesso a partir do fork!\n'

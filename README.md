@@ -97,12 +97,16 @@ docker compose up -d --force-recreate
 
 ## 🔄 Updating & Upstream Sync
 
-### Option 1: Fast Deploy Script
+### Option 1: Fast Deploy Script (Recomendado)
 
-A deployment script is included in `scripts/fast-deploy.sh` to automate building, testing, and restarting your compose stack:
+O script `scripts/fast-deploy.sh` automatiza todo o processo de pull, compilação Docker direta e restart do compose stack:
 
 ```bash
-bash scripts/fast-deploy.sh
+# Puxar do fork e atualizar automaticamente
+./scripts/fast-deploy.sh --pull
+
+# Ou saltando testes para compilação mais rápida:
+./scripts/fast-deploy.sh --pull --skip-tests
 ```
 
 ### Option 2: Pull & Rebuild

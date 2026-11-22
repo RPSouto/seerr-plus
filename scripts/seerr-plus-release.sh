@@ -2,7 +2,7 @@
 set -euo pipefail
 
 expected_repo='RPSouto/seerr-plus'
-remote_name="${SEERR_PLUS_REMOTE_NAME:-private}"
+remote_name="${SEERR_PLUS_REMOTE_NAME:-origin}"
 remote_url="${SEERR_PLUS_REMOTE_URL:-git@github.com:RPSouto/seerr-plus.git}"
 
 release="${1:-}"
