@@ -440,9 +440,17 @@ class TautulliAPI {
         responseType: 'arraybuffer',
       });
 
+      const rawContentType = response.headers['content-type'];
+      const contentType =
+        typeof rawContentType === 'string'
+          ? rawContentType
+          : Array.isArray(rawContentType)
+            ? rawContentType[0]
+            : undefined;
+
       return {
         data: Buffer.from(response.data),
-        contentType: response.headers['content-type'],
+        contentType,
       };
     } catch (e) {
       logger.error('Something went wrong fetching Tautulli image', {
